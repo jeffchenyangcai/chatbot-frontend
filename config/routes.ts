@@ -10,6 +10,9 @@
  * @param icon 配置路由的图标，取值参考 https://ant.design/components/icon-cn， 注意去除风格后缀和大小写，如想要配置图标为 <StepBackwardOutlined /> 则取值应为 stepBackward 或 StepBackward，如想要配置图标为 <UserOutlined /> 则取值应为 user 或者 User
  * @doc https://umijs.org/docs/guides/routes
  */
+
+console.log('routes.ts is being loaded and executed.');
+
 export default [
   {
     path: '/user',
@@ -28,12 +31,7 @@ export default [
     icon: 'smile',
     component: './Welcome',
   },
-  {
-    path: '/chat',
-    name: 'chat',
-    icon: 'smile',
-    component: './Chat',
-  },
+  // ...dynamicRoutes,
   {
     path: '/admin',
     name: 'admin',
@@ -50,12 +48,6 @@ export default [
         component: './Admin',
       },
     ],
-  },
-  {
-    name: 'list.table-list',
-    icon: 'table',
-    path: '/list',
-    component: './TableList',
   },
   {
     path: '/',

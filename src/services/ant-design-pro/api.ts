@@ -2,6 +2,33 @@
 /* eslint-disable */
 import { request } from '@umijs/max';
 
+/** 获取指定会话的聊天记录 GET /api/chat/:conversationId */
+export async function getChatMessages(conversationId: number, options?: { [key: string]: any }) {
+  return request<{
+    messages: {
+      id: number;
+      user: string;
+      text: string;
+      conversation_id: number;
+      created_at: string;
+      updated_at: string;
+      user_id: number | null;
+    }[];
+  }>(`/api/chat/${conversationId}`, {
+    method: 'GET',
+    ...(options || {}),
+  });
+}
+
+/** 获取会话ID列表 GET /api/conversations */
+// api.ts
+export async function getConversations(): Promise<{ conversation_ids: string[] }> {
+  // 模拟获取会话 ID 的 API 调用
+  const response = await fetch('/api/conversations');
+  const data = await response.json();
+  return { conversation_ids: data.conversation_ids.map(String) };
+}
+
 /** 获取当前的用户 GET /api/currentUser */
 export async function currentUser(options?: { [key: string]: any }) {
   return request<{
@@ -64,10 +91,10 @@ export async function rule(
 export async function updateRule(options?: { [key: string]: any }) {
   return request<API.RuleListItem>('/api/rule', {
     method: 'POST',
-    data:{
+    data: {
       method: 'update',
       ...(options || {}),
-    }
+    },
   });
 }
 
@@ -75,10 +102,10 @@ export async function updateRule(options?: { [key: string]: any }) {
 export async function addRule(options?: { [key: string]: any }) {
   return request<API.RuleListItem>('/api/rule', {
     method: 'POST',
-    data:{
+    data: {
       method: 'post',
       ...(options || {}),
-    }
+    },
   });
 }
 
@@ -86,9 +113,9 @@ export async function addRule(options?: { [key: string]: any }) {
 export async function removeRule(options?: { [key: string]: any }) {
   return request<Record<string, any>>('/api/rule', {
     method: 'POST',
-    data:{
+    data: {
       method: 'delete',
       ...(options || {}),
-    }
+    },
   });
 }

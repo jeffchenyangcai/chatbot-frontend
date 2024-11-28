@@ -1,13 +1,38 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { Button, Card, Input, Space, theme, Typography } from 'antd';
-import React, { useState } from 'react';
+import { Button, Card, Input, Space, Typography } from 'antd';
+import React, {useEffect, useState} from 'react';
+import {getChatMessages} from "@/services/ant-design-pro/api";
+import {useParams} from "react-router-dom";
 
 const Chat: React.FC = () => {
-  const { token } = theme.useToken();
+  const { conversationId } = useParams(); // 获取路由参数
+  console.log('conversationId0:', conversationId);
   const [inputText, setInputText] = useState('');
   const [chatHistory, setChatHistory] = useState([
     { text: '你好，请问有什么问题？', key: 1, isReply: true },
   ]);
+
+  useEffect(() => {
+    // 确保 conversationId 是一个有效的数字
+    console.log('conversationId:', conversationId);
+    if (conversationId) {
+      const fetchChatHistory = async () => {
+        try {
+          const response = await getChatMessages(Number(conversationId));
+          const formattedMessages = response.messages.map((message) => ({
+            text: message.text,
+            key: message.id,
+            isReply: message.user === 'Chatbot', // 假设 Chatbot 是机器人的用户名
+          }));
+          setChatHistory(formattedMessages);
+        } catch (error) {
+          console.error('Failed to fetch chat history:', error);
+        }
+      };
+
+      fetchChatHistory();
+    }
+  }, [conversationId]);
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -45,14 +70,6 @@ const Chat: React.FC = () => {
       >
         <div
           style={{
-            fontSize: '20px',
-            color: token.colorTextHeading,
-          }}
-        >
-          Title
-        </div>
-        <div
-          style={{
             flexGrow: 1, // 让对话记录区域占据剩余空间
             overflowY: 'auto', // 添加滚动条以处理溢出内容
             padding: '16px', // 添加一些内边距
@@ -80,10 +97,10 @@ const Chat: React.FC = () => {
                     height: 'auto', // 让高度自适应内容
                   }}
                   styles={{
-                      body: {
-                        padding: '10px', // 覆盖默认的 padding
-                        // borderRadius: '10px', // 覆盖默认的 borderRadius
-                      }
+                    body: {
+                      padding: '10px', // 覆盖默认的 padding
+                      // borderRadius: '10px', // 覆盖默认的 borderRadius
+                    },
                   }}
                 >
                   <Typography.Text
