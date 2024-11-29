@@ -118,3 +118,6 @@ export namespace API {
     currentAuthority: string;
   };
 }
+
+export interface Route {
+}
