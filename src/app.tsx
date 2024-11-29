@@ -7,8 +7,6 @@ import type { RunTimeLayoutConfig } from '@umijs/max';
 import { history, Link } from '@umijs/max';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
-import React, { useEffect, useState } from 'react';
-import { Menu } from 'antd';
 
 const isDev = process.env.NODE_ENV === 'development';
 const loginPath = '/user/login';
@@ -51,7 +49,7 @@ export async function getInitialState(): Promise<{
       fetchUserInfo(),
       fetchConversationIds(),
     ]);
-    const menuItems = conversationIds.map(conversationId => ({
+    const menuItems = conversationIds.map((conversationId) => ({
       path: `/chat/${conversationId}`,
       name: `Chat ${conversationId}`,
     }));
@@ -112,11 +110,11 @@ export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) =
     ],
     links: isDev
       ? [
-        <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
-          <LinkOutlined />
-          <span>OpenAPI 文档</span>
-        </Link>,
-      ]
+          <Link key="openapi" to="/umi/plugin/openapi" target="_blank">
+            <LinkOutlined />
+            <span>OpenAPI 文档</span>
+          </Link>,
+        ]
       : [],
     menuHeaderRender: undefined,
     childrenRender: (children) => {
