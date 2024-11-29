@@ -1,15 +1,17 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Input, Space, theme, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
+import { useParams } from '@umijs/max'; // 引入 useParams 钩子
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
   const [inputText, setInputText] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
+  const { id } = useParams(); // 获取 URL 中的动态参数 id
 
   useEffect(() => {
     // 发起 fetch 请求获取历史聊天数据
-    fetch('http://127.0.0.1:3000/api/chat/18')
+    fetch(`http://127.0.0.1:3000/api/chat/${id}`)
       .then(response => response.json())
       .then(data => {
         // 将获取到的数据格式化成与当前 chatHistory 状态结构一致的格式
@@ -25,7 +27,7 @@ const Chat: React.FC = () => {
       .catch(error => {
         console.error('Error fetching chat history:', error);
       });
-  }, []);
+  }, [id]); // 依赖 id 变化重新获取聊天记录
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -38,7 +40,7 @@ const Chat: React.FC = () => {
       setChatHistory(newChatHistory);
 
       // 发送消息到后端
-      fetch(`http://127.0.0.1:3000/api/chat/18/update`, {
+      fetch(`http://127.0.0.1:3000/api/chat/${id}/update`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
