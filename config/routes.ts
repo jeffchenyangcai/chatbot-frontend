@@ -29,7 +29,7 @@ export default [
     component: './Welcome',
   },
   {
-    path: '/chat',
+    path: '/chat/:id',
     name: 'chat',
     icon: 'smile',
     component: './Chat',

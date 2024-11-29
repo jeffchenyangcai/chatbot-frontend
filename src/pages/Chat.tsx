@@ -1,13 +1,31 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { Button, Card, Input, Space, theme, Typography } from 'antd';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
   const [inputText, setInputText] = useState('');
-  const [chatHistory, setChatHistory] = useState([
-    { text: '你好，请问有什么问题？', key: 1, isReply: true },
-  ]);
+  const [chatHistory, setChatHistory] = useState([]);
+
+  useEffect(() => {
+    // 发起 fetch 请求获取历史聊天数据
+    fetch('http://127.0.0.1:3000/api/chat/18')
+      .then(response => response.json())
+      .then(data => {
+        // 将获取到的数据格式化成与当前 chatHistory 状态结构一致的格式
+        const formattedHistory = data.messages.map((message, index) => ({
+          text: message.text,
+          key: index + 1,
+          isReply: message.user === 'Chatbot', // 假设 Chatbot 是机器人的用户名
+        }));
+
+        // 更新 chatHistory 状态
+        setChatHistory(formattedHistory);
+      })
+      .catch(error => {
+        console.error('Error fetching chat history:', error);
+      });
+  }, []);
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -16,16 +34,49 @@ const Chat: React.FC = () => {
         { text: inputText, key: chatHistory.length + 1, isReply: false },
       ];
 
-      // 如果是第一次发送消息，添加机器人的初始回复
-      if (chatHistory.length === 1) {
-        newChatHistory.push({
-          text: '这是固定回复',
-          key: chatHistory.length + 2,
-          isReply: true,
-        });
-      }
-
+      // 更新 chatHistory 状态
       setChatHistory(newChatHistory);
+
+      // 发送消息到后端
+      fetch(`http://127.0.0.1:3000/api/chat/18/update`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            {
+              user: 'User',
+              text: inputText,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+              user_id: null,
+            },
+          ],
+        }),
+      })
+        .then(response => response.json())
+        .then(data => {
+          console.log('Message sent successfully:', data);
+
+          // 处理后端返回的 Chatbot 回复消息
+          const chatbotReply = data.messages[0];
+          const updatedChatHistory = [
+            ...newChatHistory,
+            {
+              text: chatbotReply.text,
+              key: newChatHistory.length + 1,
+              isReply: true,
+            },
+          ];
+
+          // 更新 chatHistory 状态
+          setChatHistory(updatedChatHistory);
+        })
+        .catch(error => {
+          console.error('Error sending message:', error);
+        });
+
       setInputText('');
     }
   };
@@ -79,11 +130,8 @@ const Chat: React.FC = () => {
                     width: 'auto', // 让宽度自适应内容
                     height: 'auto', // 让高度自适应内容
                   }}
-                  styles={{
-                      body: {
-                        padding: '10px', // 覆盖默认的 padding
-                        // borderRadius: '10px', // 覆盖默认的 borderRadius
-                      }
+                  bodyStyle={{
+                    padding: '10px', // 覆盖默认的 padding
                   }}
                 >
                   <Typography.Text
