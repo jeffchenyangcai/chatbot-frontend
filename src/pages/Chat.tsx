@@ -1,32 +1,73 @@
-import { PageContainer } from '@ant-design/pro-components';
-import { Button, Card, Input, Space, theme, Typography } from 'antd';
+import { Button, Card, Input, Space, theme, Typography, message } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { useParams } from '@umijs/max'; // 引入 useParams 钩子
+import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
+import { PageContainer } from '@ant-design/pro-layout'; // 导入 PageContainer
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
   const [inputText, setInputText] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
   const { id } = useParams(); // 获取 URL 中的动态参数 id
+  const { initialState, setInitialState } = useModel('@@initialState'); // 获取 initialState 和 setInitialState
+
+  const fetchConversationIds = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:3000/api/conversations');
+      const data = await response.json();
+      console.log('Conversation IDs fetched:', data.conversation_ids);
+      return data.conversation_ids;
+    } catch (error) {
+      console.error('Error fetching conversation IDs:', error);
+      return [];
+    }
+  };
 
   useEffect(() => {
-    // 发起 fetch 请求获取历史聊天数据
-    fetch(`http://127.0.0.1:3000/api/chat/${id}`)
-      .then(response => response.json())
-      .then(data => {
-        // 将获取到的数据格式化成与当前 chatHistory 状态结构一致的格式
-        const formattedHistory = data.messages.map((message, index) => ({
-          text: message.text,
-          key: index + 1,
-          isReply: message.user === 'Chatbot', // 假设 Chatbot 是机器人的用户名
-        }));
-
-        // 更新 chatHistory 状态
-        setChatHistory(formattedHistory);
+    if (id === 'new') {
+      // 如果是新增会话，发送 POST 请求创建新会话
+      fetch('http://127.0.0.1:3000/api/chat/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       })
-      .catch(error => {
-        console.error('Error fetching chat history:', error);
-      });
+        .then(response => response.json())
+        .then(data => {
+          const newConversationId = data.id;
+          history.push(`/chat/${newConversationId}`);
+
+          // 更新菜单项
+          const newMenuItems = [
+            ...(initialState?.menuItems || []),
+            { path: `/chat/${newConversationId}`, name: `Chat ${newConversationId}` },
+          ];
+          setInitialState({ ...initialState, menuItems: newMenuItems });
+
+          message.success('会话创建成功'); // 新增会话成功提示
+        })
+        .catch(error => {
+          console.error('Error creating new conversation:', error);
+          message.error('会话创建失败'); // 新增会话失败提示
+        });
+    } else {
+      // 发起 fetch 请求获取历史聊天数据
+      fetch(`http://127.0.0.1:3000/api/chat/${id}`)
+        .then(response => response.json())
+        .then(data => {
+          // 将获取到的数据格式化成与当前 chatHistory 状态结构一致的格式
+          const formattedHistory = data.messages.map((message, index) => ({
+            text: message.text,
+            key: index + 1,
+            isReply: message.user === 'Chatbot', // 假设 Chatbot 是机器人的用户名
+          }));
+
+          // 更新 chatHistory 状态
+          setChatHistory(formattedHistory);
+        })
+        .catch(error => {
+          console.error('Error fetching chat history:', error);
+        });
+    }
   }, [id]); // 依赖 id 变化重新获取聊天记录
 
   const handleSend = () => {
