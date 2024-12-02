@@ -53,7 +53,7 @@ export async function getInitialState(): Promise<{
     const menuItems = [
       {
         path: '/welcome',
-        name: 'welcome',
+        name: '欢迎',
         icon: <SmileOutlined />, // 使用 SmileOutlined 图标
         component: './Welcome',
       },

@@ -21,7 +21,6 @@ export async function getChatMessages(conversationId: number, options?: { [key: 
 }
 
 /** 获取会话ID列表 GET /api/conversations */
-// api.ts
 export async function getConversations(): Promise<{ conversation_ids: string[] }> {
   // 模拟获取会话 ID 的 API 调用
   const response = await fetch('/api/conversations');
@@ -41,15 +40,27 @@ export async function currentUser(options?: { [key: string]: any }) {
 
 /** 退出登录接口 POST /api/login/outLogin */
 export async function outLogin(options?: { [key: string]: any }) {
-  return request<Record<string, any>>('/api/login/outLogin', {
+  return request<Record<string, any>>('http://127.0.0.1:3000/api/login/outLogin', {
     method: 'POST',
+    ...(options || {}),
+  });
+}
+
+/** 注册接口 POST /api/register */
+export async function register(body: API.RegisterParams, options?: { [key: string]: any }) {
+  return request<API.RegisterResult>('http://127.0.0.1:3000/api/register', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    data: body,
     ...(options || {}),
   });
 }
 
 /** 登录接口 POST /api/login/account */
 export async function login(body: API.LoginParams, options?: { [key: string]: any }) {
-  return request<API.LoginResult>('/api/login/account', {
+  return request<API.LoginResult>('http://127.0.0.1:3000/api/login/account', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',

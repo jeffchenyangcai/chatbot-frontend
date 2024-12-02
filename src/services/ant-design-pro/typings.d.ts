@@ -61,6 +61,21 @@ declare namespace API {
     status?: string;
   };
 
+  type RegisterParams = {
+    username: string;
+    password: string;
+    confirmPassword: string;
+    mobile?: string;
+    captcha?: string;
+    type: string;
+  };
+
+  type RegisterResult = {
+    status: string;
+    message?: string;
+    data?: any;
+  };
+
   type LoginParams = {
     username?: string;
     password?: string;
