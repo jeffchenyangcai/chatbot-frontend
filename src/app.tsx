@@ -34,7 +34,11 @@ export async function getInitialState(): Promise<{
 
   const fetchConversationIds = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/conversations');
+      const response = await fetch('http://127.0.0.1:3000/api/conversations', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       const data = await response.json();
       console.log('Conversation IDs fetched:', data.conversation_ids);
       return data.conversation_ids;

@@ -124,7 +124,21 @@ const Login: React.FC = () => {
           defaultMessage: '登录成功！',
         });
         message.success(defaultLoginSuccessMessage);
-        await fetchUserInfo();
+
+        // 保存 JWT 令牌
+        localStorage.setItem('token', msg.data.token);
+
+        // 立即获取用户信息并更新 initialState
+        const userInfo = await fetchUserInfo();
+        if (userInfo) {
+          flushSync(() => {
+            setInitialState((s) => ({
+              ...s,
+              currentUser: userInfo,
+            }));
+          });
+        }
+
         const urlParams = new URL(window.location.href).searchParams;
         history.push(urlParams.get('redirect') || '/');
         return;

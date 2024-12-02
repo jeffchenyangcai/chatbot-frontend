@@ -30,10 +30,15 @@ export async function getConversations(): Promise<{ conversation_ids: string[] }
 
 /** 获取当前的用户 GET /api/currentUser */
 export async function currentUser(options?: { [key: string]: any }) {
+  const token = localStorage.getItem('token');
   return request<{
     data: API.CurrentUser;
-  }>('/api/currentUser', {
+  }>('http://127.0.0.1:3000/api/currentUser', {
     method: 'GET',
+    headers: {
+      ...(options?.headers || {}),
+      Authorization: `Bearer ${token}`,
+    },
     ...(options || {}),
   });
 }

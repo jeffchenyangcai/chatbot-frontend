@@ -12,7 +12,11 @@ const Chat: React.FC = () => {
 
   const fetchConversationIds = async () => {
     try {
-      const response = await fetch('http://127.0.0.1:3000/api/conversations');
+      const response = await fetch('http://127.0.0.1:3000/api/conversations', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
       const data = await response.json();
       console.log('Conversation IDs fetched:', data.conversation_ids);
       return data.conversation_ids;
@@ -29,6 +33,7 @@ const Chat: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       })
         .then(response => response.json())
@@ -51,7 +56,11 @@ const Chat: React.FC = () => {
         });
     } else {
       // 发起 fetch 请求获取历史聊天数据
-      fetch(`http://127.0.0.1:3000/api/chat/${id}`)
+      fetch(`http://127.0.0.1:3000/api/chat/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
         .then(response => response.json())
         .then(data => {
           // 将获取到的数据格式化成与当前 chatHistory 状态结构一致的格式
@@ -85,6 +94,7 @@ const Chat: React.FC = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
         body: JSON.stringify({
           messages: [
