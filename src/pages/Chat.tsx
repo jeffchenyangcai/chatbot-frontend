@@ -254,13 +254,13 @@ const Chat: React.FC = () => {
             </Button>
           </Space.Compact>
         </Space>
-        <Button
+        {/* <Button
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAddConversation} // 点击加号按钮时调用 handleAddConversation
         >
           新增会话
-        </Button>
+        </Button> */}
       </Card>
     </PageContainer>
   );
