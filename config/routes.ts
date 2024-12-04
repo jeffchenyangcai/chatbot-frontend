@@ -71,4 +71,8 @@ export default [
     layout: false,
     component: './404',
   },
+  {
+    path: '/collect', // 配置收藏页面路由
+    component: './Collect',
+  },
 ];

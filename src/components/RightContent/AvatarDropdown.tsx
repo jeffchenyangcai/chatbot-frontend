@@ -72,6 +72,11 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu, childre
         loginOut();
         return;
       }
+      if (key === 'collect') {
+        // 当点击 "收藏回答" 时跳转到收藏页面
+        history.push('/collect'); // 跳转到收藏页面
+        return;
+      }
       history.push(`/account/${key}`);
     },
     [setInitialState],
@@ -117,6 +122,11 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu, childre
           },
         ]
       : []),
+    {
+      key: 'collect',
+      icon: <LogoutOutlined />,
+      label: '收藏回答',
+    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
