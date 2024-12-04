@@ -98,8 +98,17 @@ const handleDeleteConversation = async (conversationId: number) => {
   try {
     await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    }).catch((fetchError) => {
+      console.error('Error deleting conversation:', fetchError);
+      message.error('会话删除失败'); // 删除失败提示
+      return; // 提前返回，不执行后续代码
     });
+
     message.success('会话删除成功'); // 删除成功提示
+
     // 删除成功后，重新获取会话列表并更新菜单项
     const newConversationIds = await fetchConversationIds();
     const newMenuItems = [
@@ -134,8 +143,8 @@ const handleDeleteConversation = async (conversationId: number) => {
       menuItems: newMenuItems,
     }));
   } catch (error) {
-    console.error('Error deleting conversation:', error);
-    message.error('会话删除失败'); // 删除失败提示
+    console.error('Error fetching conversation IDs:', error);
+    // message.error('获取会话列表失败'); // 获取会话列表失败提示 鸵鸟疗法
   }
 };
 
