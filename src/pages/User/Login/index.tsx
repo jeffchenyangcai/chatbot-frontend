@@ -129,23 +129,36 @@ const Login: React.FC = () => {
         localStorage.setItem('token', msg.data.token);
 
         // 立即获取用户信息并更新 initialState
-        const userInfo = await fetchUserInfo();
-        if (userInfo) {
-          flushSync(() => {
-            setInitialState((s) => ({
-              ...s,
-              currentUser: userInfo,
-            }));
-          });
+        try {
+          const userInfo = await fetchUserInfo();
+          if (userInfo) {
+            flushSync(() => {
+              setInitialState((s) => ({
+                ...s,
+                currentUser: userInfo,
+              }));
+            });
+          }
+        } catch (userInfoError) {
+          console.error('Failed to fetch user info:', userInfoError);
+          message.error('获取用户信息失败，请稍后重试！');
+          return; // 提前返回，避免继续执行后续操作
         }
 
         // 更新菜单栏
-        await updateMenuItems();
+        try {
+          await updateMenuItems();
+        } catch (menuItemsError) {
+          console.error('Failed to update menu items:', menuItemsError);
+          message.error('更新菜单栏失败，请稍后重试！');
+          return; // 提前返回，避免继续执行后续操作
+        }
 
         const urlParams = new URL(window.location.href).searchParams;
         history.push(urlParams.get('redirect') || '/');
         return;
       }
+
       console.log(msg);
       // 如果失败去设置用户错误信息
       setUserLoginState(msg);
@@ -154,7 +167,7 @@ const Login: React.FC = () => {
         id: 'pages.login.failure',
         defaultMessage: '登录失败，请重试！',
       });
-      console.log(error);
+      console.error(error);
       message.error(defaultLoginFailureMessage);
     }
   };
@@ -177,38 +190,55 @@ const Login: React.FC = () => {
   };
 
   const updateMenuItems = async () => {
-    const newConversationIds = await fetchConversationIds();
-    const newMenuItems = [
-      {
-        path: '/welcome',
-        name: '欢迎',
-        icon: <SmileOutlined />,
-        component: './Welcome',
-      },
-      ...newConversationIds.map((conversationId) => ({
-        path: `/chat/${conversationId}`,
-        name: `Chat ${conversationId}`,
-        icon: (
-          <Tooltip title="删除会话" placement="right">
-            <DeleteOutlined onClick={() => handleDeleteConversation(conversationId)} />
-          </Tooltip>
-        ),
-      })),
-    ];
+    console.log('Starting updateMenuItems...');
 
-    // 添加新增会话的菜单项
-    newMenuItems.push({
-      path: '/chat/new',
-      name: 'New Chat',
-      icon: <PlusOutlined />,
-    });
+    try {
+      // 获取会话 ID 列表
+      console.log('Fetching conversation IDs...');
+      const newConversationIds = await fetchConversationIds();
+      console.log('Fetched conversation IDs:', newConversationIds);
 
-    // 更新 initialState 中的 menuItems
-    setInitialState((preInitialState) => ({
-      ...preInitialState,
-      conversationIds: newConversationIds,
-      menuItems: newMenuItems,
-    }));
+      // 创建新的菜单项
+      console.log('Creating new menu items...');
+      const newMenuItems = [
+        {
+          path: '/welcome',
+          name: '欢迎',
+          icon: <SmileOutlined />,
+          component: './Welcome',
+        },
+        ...newConversationIds.map((conversationId) => ({
+          path: `/chat/${conversationId}`,
+          name: `Chat ${conversationId}`,
+          icon: (
+            <Tooltip title="删除会话" placement="right">
+              <DeleteOutlined onClick={() => handleDeleteConversation(conversationId)} />
+            </Tooltip>
+          ),
+        })),
+      ];
+
+      // 添加新增会话的菜单项
+      newMenuItems.push({
+        path: '/chat/new',
+        name: 'New Chat',
+        icon: <PlusOutlined />,
+      });
+
+      console.log('New menu items:', newMenuItems);
+
+      // 更新 initialState 中的 menuItems
+      console.log('Updating initialState...');
+      setInitialState((preInitialState) => ({
+        ...preInitialState,
+        conversationIds: newConversationIds,
+        menuItems: newMenuItems,
+      }));
+
+      console.log('InitialState updated successfully.');
+    } catch (error) {
+      console.error('Error in updateMenuItems:', error);
+    }
   };
 
   const handleDeleteConversation = async (conversationId: number) => {
