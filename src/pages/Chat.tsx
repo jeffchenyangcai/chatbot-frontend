@@ -32,6 +32,7 @@ const Chat: React.FC = () => {
   useEffect(() => {
     if (id === 'new') {
       // 如果是新增会话，发送 POST 请求创建新会话
+      console.log('获取历史记录');
       fetch('http://127.0.0.1:3000/api/chat/new', {
         method: 'POST',
         headers: {
@@ -72,7 +73,7 @@ const Chat: React.FC = () => {
             key: index + 1,
             isReply: message.user === 'Chatbot', // 假设 Chatbot 是机器人的用户名
           }));
-
+          console.log('获取历史记录');
           // 更新 chatHistory 状态
           setChatHistory(formattedHistory);
         })
