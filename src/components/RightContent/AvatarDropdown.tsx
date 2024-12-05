@@ -1,5 +1,5 @@
 import { outLogin } from '@/services/ant-design-pro/api';
-import { LogoutOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import {LikeOutlined, LogoutOutlined, SettingOutlined, UserOutlined} from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
 import { Spin } from 'antd';
 import { createStyles } from 'antd-style';
@@ -124,7 +124,7 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu, childre
       : []),
     {
       key: 'collect',
-      icon: <LogoutOutlined />,
+      icon: <LikeOutlined />,
       label: '个人收藏',
     },
     {
