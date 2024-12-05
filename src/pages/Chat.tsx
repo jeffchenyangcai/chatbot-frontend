@@ -1,5 +1,5 @@
-import { PageContainer } from '@ant-design/pro-layout'; // 导入 PageContainer
-import { history, useModel, useParams } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
+import { PageContainer } from '@ant-design/pro-layout';
+import { history, useModel, useParams } from '@umijs/max';
 import { Button, Card, Input, message, Popover, Space, theme, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 
@@ -10,9 +10,10 @@ const Chat: React.FC = () => {
   const [selectedMessage, setSelectedMessage] = useState<any | null>(null); // 选中的消息
   const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null); // 记录长按定时器
   const [isLongPressed, setIsLongPressed] = useState(false); // 是否为长按
+  const [collectTimer, setCollectTimer] = useState<NodeJS.Timeout | null>(null); // 收藏按钮延时消失定时器
   const { id } = useParams(); // 获取 URL 中的动态参数 id
   const { initialState, setInitialState } = useModel('@@initialState'); // 获取 initialState 和 setInitialState
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const fetchConversationIds = async () => {
     try {
       const response = await fetch('http://127.0.0.1:3000/api/conversations', {
@@ -31,8 +32,6 @@ const Chat: React.FC = () => {
 
   useEffect(() => {
     if (id === 'new') {
-      // 如果是新增会话，发送 POST 请求创建新会话
-      console.log('获取历史记录');
       fetch('http://127.0.0.1:3000/api/chat/new', {
         method: 'POST',
         headers: {
@@ -45,21 +44,19 @@ const Chat: React.FC = () => {
           const newConversationId = data.id;
           history.push(`/chat/${newConversationId}`);
 
-          // 更新菜单项
           const newMenuItems = [
             ...(initialState?.menuItems || []),
             { path: `/chat/${newConversationId}`, name: `Chat ${newConversationId}` },
           ];
           setInitialState({ ...initialState, menuItems: newMenuItems });
 
-          message.success('会话创建成功'); // 新增会话成功提示
+          message.success('会话创建成功');
         })
         .catch((error) => {
           console.error('Error creating new conversation:', error);
-          message.error('会话创建失败'); // 新增会话失败提示
+          message.error('会话创建失败');
         });
     } else {
-      // 发起 fetch 请求获取历史聊天数据
       fetch(`http://127.0.0.1:3000/api/chat/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -67,21 +64,20 @@ const Chat: React.FC = () => {
       })
         .then((response) => response.json())
         .then((data) => {
-          // 将获取到的数据格式化成与当前 chatHistory 状态结构一致的格式
+          console.log("前端收到的回答",data);
           const formattedHistory = data.messages.map((message, index) => ({
             text: message.text,
             key: index + 1,
-            isReply: message.user === 'Chatbot', // 假设 Chatbot 是机器人的用户名
+            isReply: message.user === 'Chatbot',
+            ansid: message.id,
           }));
-          console.log('获取历史记录');
-          // 更新 chatHistory 状态
           setChatHistory(formattedHistory);
         })
         .catch((error) => {
           console.error('Error fetching chat history:', error);
         });
     }
-  }, [id]); // 依赖 id 变化重新获取聊天记录
+  }, [id]);
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -90,10 +86,8 @@ const Chat: React.FC = () => {
         { text: inputText, key: chatHistory.length + 1, isReply: false },
       ];
 
-      // 更新 chatHistory 状态
       setChatHistory(newChatHistory);
 
-      // 发送消息到后端
       fetch(`http://127.0.0.1:3000/api/chat/${id}/update`, {
         method: 'POST',
         headers: {
@@ -114,9 +108,6 @@ const Chat: React.FC = () => {
       })
         .then((response) => response.json())
         .then((data) => {
-          console.log('Message sent successfully:', data);
-
-          // 处理后端返回的 Chatbot 回复消息
           const chatbotReply = data.messages[0];
           const updatedChatHistory = [
             ...newChatHistory,
@@ -127,7 +118,6 @@ const Chat: React.FC = () => {
             },
           ];
 
-          // 更新 chatHistory 状态
           setChatHistory(updatedChatHistory);
         })
         .catch((error) => {
@@ -140,31 +130,54 @@ const Chat: React.FC = () => {
 
   // 处理长按收藏
   const handleMouseDown = (message: any) => {
-    // 设置长按定时器，500ms后认为是长按
     const timer = setTimeout(() => {
       setIsLongPressed(true);
-      setSelectedMessage(message); // 设置当前选中的消息
-    }, 500);
+      setSelectedMessage(message);
+    }, 500); // 设置长按时间为500ms
     setPressTimer(timer);
   };
 
   const handleMouseUp = () => {
     if (pressTimer) {
-      clearTimeout(pressTimer); // 清除定时器
-      setPressTimer(null); // 重置定时器
+      clearTimeout(pressTimer);
+      setPressTimer(null);
     }
-    if (!isLongPressed) {
-      setSelectedMessage(null); // 如果没有长按，则不显示收藏按钮
-    }
-    setIsLongPressed(false); // 重置长按状态
   };
 
   const handleCollect = () => {
     if (selectedMessage) {
-      console.log('收藏消息:', selectedMessage);
-      message.success('消息已收藏！');
-      // 在此处可以将收藏逻辑实现，例如将收藏的消息保存到数据库或者本地
-      setSelectedMessage(null); // 收藏后重置选中的消息
+      console.log("选中的消息",selectedMessage);
+      message.success('回答已收藏！回答编号:'+selectedMessage.ansid);
+      // 发送请求更新 is_collected 字段
+      fetch(`http://127.0.0.1:3000/api/messages/${selectedMessage.ansid}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`, // 如果需要认证
+        },
+        body: JSON.stringify({ is_collected: 1 }), // 更新 is_collected 为 1
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log('更新成功', data);
+          message.success(`回答已收藏！回答编号: ${selectedMessage.ansid}`);
+        })
+        .catch((error) => {
+          console.error('更新失败', error);
+          message.error('收藏失败，请稍后重试');
+        });
+
+      setSelectedMessage(null);
+
+      // 设置收藏按钮延时消失
+      if (collectTimer) {
+        clearTimeout(collectTimer);
+      }
+      const timer = setTimeout(() => {
+        setIsLongPressed(false); // 2秒后消失按钮
+        setSelectedMessage(null); // 2秒后清除选中的消息
+      }, 2000); // 2秒后消失
+      setCollectTimer(timer);
     }
   };
 
@@ -178,7 +191,7 @@ const Chat: React.FC = () => {
         bodyStyle={{
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between', // 确保内容分布在顶部、中间和底部
+          justifyContent: 'space-between',
         }}
       >
         <div
@@ -191,48 +204,49 @@ const Chat: React.FC = () => {
         </div>
         <div
           style={{
-            flexGrow: 1, // 让对话记录区域占据剩余空间
-            overflowY: 'auto', // 添加滚动条以处理溢出内容
-            padding: '16px', // 添加一些内边距
+            flexGrow: 1,
+            overflowY: 'auto',
+            padding: '16px',
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: '300px', // 设置最大高度以确保内容溢出时显示滚动条
+            maxHeight: '300px',
           }}
         >
-          {/* 对话记录内容 */}
           {chatHistory.map((chat) => {
             return (
               <div
                 className="chat-bubble"
                 key={chat.key}
                 style={{
-                  alignSelf: chat.isReply ? 'flex-start' : 'flex-end', // 根据消息类型决定对齐方式
-                  marginBottom: '10px', // 添加一些底部间距
+                  alignSelf: chat.isReply ? 'flex-start' : 'flex-end',
+                  marginBottom: '10px',
                 }}
-                onMouseDown={() => handleMouseDown(chat)} // 监听鼠标按下事件
-                onMouseUp={handleMouseUp} // 监听鼠标松开事件
+                onMouseDown={() => handleMouseDown(chat)}
+                onMouseUp={handleMouseUp}
               >
                 <Card
                   style={{
                     backgroundColor: chat.isReply ? 'rgba(0,0,0,0.06)' : '#95ec69',
                     border: 'none',
-                    width: 'auto', // 让宽度自适应内容
-                    height: 'auto', // 让高度自适应内容
+                    width: 'auto',
+                    height: 'auto',
                   }}
                   bodyStyle={{
-                    padding: '10px', // 覆盖默认的 padding
+                    padding: '10px',
                   }}
                 >
                   <Typography.Text
                     style={{
-                      whiteSpace: 'pre-wrap', // 允许文本换行
-                      wordBreak: 'break-word', // 允许单词内换行
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                      lineHeight: '1.5',
+                      fontSize: '16px',
                     }}
                   >
                     {chat.text}
                   </Typography.Text>
                 </Card>
-                {selectedMessage?.key === chat.key && (
+                {selectedMessage?.key === chat.key && isLongPressed && (
                   <Popover
                     content={
                       <Button type="primary" onClick={handleCollect}>
@@ -242,7 +256,7 @@ const Chat: React.FC = () => {
                     trigger="click"
                     visible={isLongPressed}
                     onVisibleChange={(visible) => {
-                      if (!visible) setSelectedMessage(null); // 关闭弹出时重置选中的消息
+                      if (!visible) setSelectedMessage(null);
                     }}
                     placement="top"
                   >

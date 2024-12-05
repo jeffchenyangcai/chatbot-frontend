@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 const Collect: React.FC = () => {
   const [collects, setCollects] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-
+  // TODO 增加删除收藏功能
   useEffect(() => {
     console.log('开始读取collect');
     const fetchCollects = async () => {
