@@ -130,11 +130,15 @@ const Chat: React.FC = () => {
 
   // 处理长按收藏
   const handleMouseDown = (message: any) => {
-    const timer = setTimeout(() => {
-      setIsLongPressed(true);
-      setSelectedMessage(message);
-    }, 500); // 设置长按时间为500ms
-    setPressTimer(timer);
+
+    console.log("选中的message",message);
+    if(message.isReply===true){
+      const timer = setTimeout(() => {
+        setIsLongPressed(true);
+        setSelectedMessage(message);
+      }, 500); // 设置长按时间为500ms
+      setPressTimer(timer);
+    }
   };
 
   const handleMouseUp = () => {
@@ -149,7 +153,7 @@ const Chat: React.FC = () => {
       console.log("选中的消息",selectedMessage);
       message.success('回答已收藏！回答编号:'+selectedMessage.ansid);
       // 发送请求更新 is_collected 字段
-      fetch(`http://127.0.0.1:3000/api/messages/${selectedMessage.ansid}`, {
+      fetch(`http://127.0.0.1:3000/api/messages/${selectedMessage.ansid}/collect`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
