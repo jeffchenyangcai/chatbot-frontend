@@ -142,7 +142,15 @@ const handleDeleteConversation = async (conversationId: number) => {
   try {
     await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
       method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    }).catch((fetchError) => {
+      console.error('Error deleting conversation:', fetchError);
+      message.error('会话删除失败'); // 删除失败提示
+      return; // 提前返回，不执行后续代码
     });
+
     message.success('会话删除成功');
 
     // 获取更新后的会话列表
