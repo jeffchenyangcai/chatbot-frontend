@@ -4,6 +4,9 @@ import React, { useEffect, useState } from 'react';
 import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
 import ReactMarkdown from 'react-markdown'; // 引入 react-markdown 库
 import remarkGfm from 'remark-gfm'; // 引入 remark-gfm 插件
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'; // 引入代码高亮库
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'; // 引入代码高亮样式
+import { CopyToClipboard } from 'react-copy-to-clipboard'; // 引入复制到剪贴板库
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
@@ -221,20 +224,12 @@ const Chat: React.FC = () => {
       >
         <div
           style={{
-            fontSize: '20px',
-            color: token.colorTextHeading,
-          }}
-        >
-          Title
-        </div>
-        <div
-          style={{
             flexGrow: 1,
             overflowY: 'auto',
             padding: '16px',
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: '360px',
+            maxHeight: '390px',
           }}
         >
           {chatHistory.map((chat) => {
@@ -261,7 +256,44 @@ const Chat: React.FC = () => {
                   }}
                 >
                   {chat.isReply ? (
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        code({ node, inline, className, children, ...props }) {
+                          const match = /language-(\w+)/.exec(className || '');
+                          return !inline && match ? (
+                            <div style={{ position: 'relative' }}>
+                              <SyntaxHighlighter
+                                style={dracula}
+                                language={match[1]}
+                                PreTag="div"
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                              <CopyToClipboard text={String(children)}>
+                                <Button
+                                  type="primary"
+                                  style={{
+                                    position: 'absolute',
+                                    top: '8px',
+                                    right: '8px',
+                                    zIndex: 1,
+                                  }}
+                                  onClick={() => message.success('代码已复制到剪贴板')}
+                                >
+                                  复制
+                                </Button>
+                              </CopyToClipboard>
+                            </div>
+                          ) : (
+                            <code className={className} {...props}>
+                              {children}
+                            </code>
+                          );
+                        },
+                      }}
+                    >
                       {chat.text}
                     </ReactMarkdown>
                   ) : (
