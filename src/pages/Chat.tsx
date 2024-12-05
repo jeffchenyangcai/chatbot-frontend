@@ -2,6 +2,8 @@ import { PageContainer } from '@ant-design/pro-layout';
 import { Button, Card, Input, message, Popover, Space, theme, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
+import ReactMarkdown from 'react-markdown'; // 引入 react-markdown 库
+import remarkGfm from 'remark-gfm'; // 引入 remark-gfm 插件
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
@@ -84,7 +86,7 @@ const Chat: React.FC = () => {
       })
         .then((response) => response.json())
         .then((data) => {
-          console.log("前端收到的回答",data);
+          console.log("前端收到的回答", data);
           const formattedHistory = data.messages.map((message, index) => ({
             text: message.text,
             key: index + 1,
@@ -150,9 +152,8 @@ const Chat: React.FC = () => {
 
   // 处理长按收藏
   const handleMouseDown = (message: any) => {
-
-    console.log("选中的message",message);
-    if(message.isReply===true){
+    console.log("选中的message", message);
+    if (message.isReply === true) {
       const timer = setTimeout(() => {
         setIsLongPressed(true);
         setSelectedMessage(message);
@@ -170,8 +171,8 @@ const Chat: React.FC = () => {
 
   const handleCollect = () => {
     if (selectedMessage) {
-      console.log("选中的消息",selectedMessage);
-      message.success('回答已收藏！回答编号:'+selectedMessage.ansid);
+      console.log("选中的消息", selectedMessage);
+      message.success('回答已收藏！回答编号:' + selectedMessage.ansid);
       // 发送请求更新 is_collected 字段
       fetch(`http://127.0.0.1:3000/api/messages/${selectedMessage.ansid}/collect`, {
         method: 'PATCH',
@@ -233,7 +234,7 @@ const Chat: React.FC = () => {
             padding: '16px',
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: '300px',
+            maxHeight: '360px',
           }}
         >
           {chatHistory.map((chat) => {
@@ -259,14 +260,20 @@ const Chat: React.FC = () => {
                     padding: '10px',
                   }}
                 >
-                  <Typography.Text
-                    style={{
-                      whiteSpace: 'pre-wrap', // 允许文本换行
-                      wordBreak: 'break-word', // 允许单词内换行
-                    }}
-                  >
-                    {chat.text}
-                  </Typography.Text>
+                  {chat.isReply ? (
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {chat.text}
+                    </ReactMarkdown>
+                  ) : (
+                    <Typography.Text
+                      style={{
+                        whiteSpace: 'pre-wrap', // 允许文本换行
+                        wordBreak: 'break-word', // 允许单词内换行
+                      }}
+                    >
+                      {chat.text}
+                    </Typography.Text>
+                  )}
                 </Card>
                 {selectedMessage?.key === chat.key && isLongPressed && (
                   <Popover
@@ -310,13 +317,6 @@ const Chat: React.FC = () => {
             </Button>
           </Space.Compact>
         </Space>
-        {/* <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={handleAddConversation} // 点击加号按钮时调用 handleAddConversation
-        >
-          新增会话
-        </Button> */}
       </Card>
     </PageContainer>
   );
