@@ -4,16 +4,22 @@ import React, { useEffect, useState } from 'react';
 const Collect: React.FC = () => {
   const [collects, setCollects] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  // TODO 增加删除收藏功能
+
+  // 删除收藏的函数
+  const handleDelete = (answerId: string) => {
+    // TODO: 实现删除收藏的逻辑
+    console.log(`删除收藏：${answerId}`);
+  };
+
   useEffect(() => {
     console.log('开始读取collect');
     const fetchCollects = async () => {
       try {
         const response = await fetch('http://127.0.0.1:3000/api/collect', {
-          method: 'GET', // 请求方法
+          method: 'GET',
           headers: {
             Authorization: `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'application/json', // 可选，取决于你的 API 需要的内容类型
+            'Content-Type': 'application/json',
           },
         });
         const data = await response.json();
@@ -30,20 +36,12 @@ const Collect: React.FC = () => {
 
     fetchCollects();
   }, []);
-  // //使用mock数据
-  // useEffect(() => {
-  //   // 模拟 API 请求
-  //   setTimeout(() => {
-  //     setCollects(collectMockData); // 使用 mock 数据
-  //     setLoading(false);
-  //   }, 1000); // 延迟1秒，模拟加载过程
-  // }, []);
 
   return (
     <div>
       <h2>我的收藏</h2>
       {loading ? (
-        <Spin size="large" /> // 显示加载中的 Spinner
+        <Spin size="large" />
       ) : (
         <List
           grid={{ gutter: 16, column: 1 }}
@@ -52,8 +50,16 @@ const Collect: React.FC = () => {
             <List.Item>
               <Card title={`收藏：${item.answerId}`}>
                 <p>{item.content}</p>
-                <Button type="link">查看</Button>
-                {/* 你可以在这里添加取消收藏按钮 */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div></div> {/* 占位符，用于将按钮推到右边 */}
+                  <Button
+                    type="link"
+                    style={{ color: 'red' }}
+                    onClick={() => handleDelete(item.answerId)}
+                  >
+                    删除
+                  </Button>
+                </div>
               </Card>
             </List.Item>
           )}
