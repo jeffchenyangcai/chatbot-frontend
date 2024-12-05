@@ -1,15 +1,35 @@
-import { Button, Card, Input, Space, theme, Typography, message } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
-import { PageContainer } from '@ant-design/pro-layout'; // 导入 PageContainer
+import { Button, Card, Input, Space, theme, Typography, message } from 'antd';
+import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'; // 引入删除和加号图标
+import { useParams, history, useModel } from '@umijs/max';
+import { PageContainer } from '@ant-design/pro-layout';
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
   const [inputText, setInputText] = useState('');
   const [chatHistory, setChatHistory] = useState([]);
-  const { id } = useParams(); // 获取 URL 中的动态参数 id
-  const { initialState, setInitialState } = useModel('@@initialState'); // 获取 initialState 和 setInitialState
+  const { id } = useParams();
+  const { initialState, setInitialState } = useModel('@@initialState');
 
+  // 创建新会话
+  const createNewConversation = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:3000/api/chat/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      const data = await response.json();
+      return data.id; // 返回新会话 ID
+    } catch (error) {
+      console.error('Error creating new conversation:', error);
+      message.error('会话创建失败');
+    }
+  };
+
+  // 获取所有会话ID
   const fetchConversationIds = async () => {
     try {
       const response = await fetch('http://127.0.0.1:3000/api/conversations', {
@@ -18,7 +38,6 @@ const Chat: React.FC = () => {
         },
       });
       const data = await response.json();
-      console.log('Conversation IDs fetched:', data.conversation_ids);
       return data.conversation_ids;
     } catch (error) {
       console.error('Error fetching conversation IDs:', error);
@@ -26,58 +45,80 @@ const Chat: React.FC = () => {
     }
   };
 
+  // 添加新会话并延时更新菜单
+  const handleAddConversation = async () => {
+    const newConversationId = await createNewConversation();
+    if (newConversationId) {
+      // 延时更新菜单项
+      setTimeout(async () => {
+        const updatedConversationIds = await fetchConversationIds();
+        const newMenuItems = [
+          ...(initialState?.menuItems || []),
+          { path: `/chat/${newConversationId}`, name: `Chat ${newConversationId}` },
+        ];
+        setInitialState((prevState) => ({
+          ...prevState,
+          menuItems: newMenuItems,
+        }));
+
+        message.success('会话创建成功');
+        history.push(`/chat/${newConversationId}`);
+      }, 300); // 延时 300 毫秒
+    }
+  };
+
+  // 删除会话
+  const handleDeleteConversation = async (conversationId: number) => {
+    try {
+      await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
+        method: 'DELETE',
+      });
+      message.success('会话删除成功');
+
+      // 延时更新菜单项
+      setTimeout(async () => {
+        const updatedConversationIds = await fetchConversationIds();
+        const newMenuItems = updatedConversationIds.map((id) => ({
+          path: `/chat/${id}`,
+          name: `Chat ${id}`,
+        }));
+        newMenuItems.push({ path: '/chat/new', name: 'New Chat', icon: <PlusOutlined /> });
+
+        setInitialState((prevState) => ({
+          ...prevState,
+          menuItems: newMenuItems,
+        }));
+      }, 1000);
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      message.error('会话删除失败');
+    }
+  };
+
   useEffect(() => {
     if (id === 'new') {
-      // 如果是新增会话，发送 POST 请求创建新会话
-      fetch('http://127.0.0.1:3000/api/chat/new', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      })
-        .then(response => response.json())
-        .then(data => {
-          const newConversationId = data.id;
-          history.push(`/chat/${newConversationId}`);
-
-          // 更新菜单项
-          const newMenuItems = [
-            ...(initialState?.menuItems || []),
-            { path: `/chat/${newConversationId}`, name: `Chat ${newConversationId}` },
-          ];
-          setInitialState({ ...initialState, menuItems: newMenuItems });
-
-          message.success('会话创建成功'); // 新增会话成功提示
-        })
-        .catch(error => {
-          console.error('Error creating new conversation:', error);
-          message.error('会话创建失败'); // 新增会话失败提示
-        });
+      handleAddConversation();
     } else {
-      // 发起 fetch 请求获取历史聊天数据
+      // 获取聊天记录
       fetch(`http://127.0.0.1:3000/api/chat/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       })
-        .then(response => response.json())
-        .then(data => {
-          // 将获取到的数据格式化成与当前 chatHistory 状态结构一致的格式
+        .then((response) => response.json())
+        .then((data) => {
           const formattedHistory = data.messages.map((message, index) => ({
             text: message.text,
             key: index + 1,
-            isReply: message.user === 'Chatbot', // 假设 Chatbot 是机器人的用户名
+            isReply: message.user === 'Chatbot',
           }));
-
-          // 更新 chatHistory 状态
           setChatHistory(formattedHistory);
         })
-        .catch(error => {
+        .catch((error) => {
           console.error('Error fetching chat history:', error);
         });
     }
-  }, [id]); // 依赖 id 变化重新获取聊天记录
+  }, [id]);
 
   const handleSend = () => {
     if (inputText.trim()) {
@@ -86,10 +127,8 @@ const Chat: React.FC = () => {
         { text: inputText, key: chatHistory.length + 1, isReply: false },
       ];
 
-      // 更新 chatHistory 状态
       setChatHistory(newChatHistory);
 
-      // 发送消息到后端
       fetch(`http://127.0.0.1:3000/api/chat/${id}/update`, {
         method: 'POST',
         headers: {
@@ -108,11 +147,8 @@ const Chat: React.FC = () => {
           ],
         }),
       })
-        .then(response => response.json())
-        .then(data => {
-          console.log('Message sent successfully:', data);
-
-          // 处理后端返回的 Chatbot 回复消息
+        .then((response) => response.json())
+        .then((data) => {
           const chatbotReply = data.messages[0];
           const updatedChatHistory = [
             ...newChatHistory,
@@ -122,11 +158,9 @@ const Chat: React.FC = () => {
               isReply: true,
             },
           ];
-
-          // 更新 chatHistory 状态
           setChatHistory(updatedChatHistory);
         })
-        .catch(error => {
+        .catch((error) => {
           console.error('Error sending message:', error);
         });
 
@@ -144,7 +178,7 @@ const Chat: React.FC = () => {
         bodyStyle={{
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between', // 确保内容分布在顶部、中间和底部
+          justifyContent: 'space-between',
         }}
       >
         <div
@@ -157,40 +191,39 @@ const Chat: React.FC = () => {
         </div>
         <div
           style={{
-            flexGrow: 1, // 让对话记录区域占据剩余空间
-            overflowY: 'auto', // 添加滚动条以处理溢出内容
-            padding: '16px', // 添加一些内边距
+            flexGrow: 1,
+            overflowY: 'auto',
+            padding: '16px',
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: '300px', // 设置最大高度以确保内容溢出时显示滚动条
+            maxHeight: '300px',
           }}
         >
-          {/* 对话记录内容 */}
           {chatHistory.map((chat) => {
             return (
               <div
                 className="chat-bubble"
                 key={chat.key}
                 style={{
-                  alignSelf: chat.isReply ? 'flex-start' : 'flex-end', // 根据消息类型决定对齐方式
-                  marginBottom: '10px', // 添加一些底部间距
+                  alignSelf: chat.isReply ? 'flex-start' : 'flex-end',
+                  marginBottom: '10px',
                 }}
               >
                 <Card
                   style={{
                     backgroundColor: chat.isReply ? 'rgba(0,0,0,0.06)' : '#95ec69',
                     border: 'none',
-                    width: 'auto', // 让宽度自适应内容
-                    height: 'auto', // 让高度自适应内容
+                    width: 'auto',
+                    height: 'auto',
                   }}
                   bodyStyle={{
-                    padding: '10px', // 覆盖默认的 padding
+                    padding: '10px',
                   }}
                 >
                   <Typography.Text
                     style={{
-                      whiteSpace: 'pre-wrap', // 允许文本换行
-                      wordBreak: 'break-word', // 允许单词内换行
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
                     }}
                   >
                     {chat.text}
@@ -221,6 +254,13 @@ const Chat: React.FC = () => {
             </Button>
           </Space.Compact>
         </Space>
+        {/* <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAddConversation} // 点击加号按钮时调用 handleAddConversation
+        >
+          新增会话
+        </Button> */}
       </Card>
     </PageContainer>
   );

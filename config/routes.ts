@@ -25,6 +25,7 @@ export default [
         path: '/user/register',
         component: './User/Register',
       },
+      
     ],
   },
   {
@@ -71,4 +72,5 @@ export default [
     layout: false,
     component: './404',
   },
+  { path: '/new-page', name: '新页面', component: './User/NewPage' },
 ];
