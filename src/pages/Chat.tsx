@@ -1,9 +1,7 @@
 import { PageContainer } from '@ant-design/pro-layout';
-import { history, useModel, useParams } from '@umijs/max';
 import { Button, Card, Input, message, Popover, Space, theme, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
-import { PageContainer } from '@ant-design/pro-layout'; // 导入 PageContainer
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
