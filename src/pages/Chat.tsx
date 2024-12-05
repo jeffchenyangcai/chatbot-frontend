@@ -1,15 +1,20 @@
-import React, { useEffect, useState } from 'react';
-import { Button, Card, Input, Space, theme, Typography, message } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons'; // 引入删除和加号图标
-import { useParams, history, useModel } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-layout';
+import { history, useModel, useParams } from '@umijs/max';
+import { Button, Card, Input, message, Popover, Space, theme, Typography } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
+import { PageContainer } from '@ant-design/pro-layout'; // 导入 PageContainer
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
   const [inputText, setInputText] = useState('');
-  const [chatHistory, setChatHistory] = useState([]);
-  const { id } = useParams();
-  const { initialState, setInitialState } = useModel('@@initialState');
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [selectedMessage, setSelectedMessage] = useState<any | null>(null); // 选中的消息
+  const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null); // 记录长按定时器
+  const [isLongPressed, setIsLongPressed] = useState(false); // 是否为长按
+  const [collectTimer, setCollectTimer] = useState<NodeJS.Timeout | null>(null); // 收藏按钮延时消失定时器
+  const { id } = useParams(); // 获取 URL 中的动态参数 id
+  const { initialState, setInitialState } = useModel('@@initialState'); // 获取 initialState 和 setInitialState
 
   // 创建新会话
   const createNewConversation = async () => {
@@ -38,6 +43,7 @@ const Chat: React.FC = () => {
         },
       });
       const data = await response.json();
+      console.log('Conversation IDs fetched:', data.conversation_ids);
       return data.conversation_ids;
     } catch (error) {
       console.error('Error fetching conversation IDs:', error);
@@ -45,61 +51,34 @@ const Chat: React.FC = () => {
     }
   };
 
-  // 添加新会话并延时更新菜单
-  const handleAddConversation = async () => {
-    const newConversationId = await createNewConversation();
-    if (newConversationId) {
-      // 延时更新菜单项
-      setTimeout(async () => {
-        const updatedConversationIds = await fetchConversationIds();
-        const newMenuItems = [
-          ...(initialState?.menuItems || []),
-          { path: `/chat/${newConversationId}`, name: `Chat ${newConversationId}` },
-        ];
-        setInitialState((prevState) => ({
-          ...prevState,
-          menuItems: newMenuItems,
-        }));
-
-        message.success('会话创建成功');
-        history.push(`/chat/${newConversationId}`);
-      }, 300); // 延时 300 毫秒
-    }
-  };
-
-  // 删除会话
-  const handleDeleteConversation = async (conversationId: number) => {
-    try {
-      await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
-        method: 'DELETE',
-      });
-      message.success('会话删除成功');
-
-      // 延时更新菜单项
-      setTimeout(async () => {
-        const updatedConversationIds = await fetchConversationIds();
-        const newMenuItems = updatedConversationIds.map((id) => ({
-          path: `/chat/${id}`,
-          name: `Chat ${id}`,
-        }));
-        newMenuItems.push({ path: '/chat/new', name: 'New Chat', icon: <PlusOutlined /> });
-
-        setInitialState((prevState) => ({
-          ...prevState,
-          menuItems: newMenuItems,
-        }));
-      }, 1000);
-    } catch (error) {
-      console.error('Error deleting conversation:', error);
-      message.error('会话删除失败');
-    }
-  };
-
   useEffect(() => {
     if (id === 'new') {
-      handleAddConversation();
+      fetch('http://127.0.0.1:3000/api/chat/new', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          const newConversationId = data.id;
+          history.push(`/chat/${newConversationId}`);
+
+          const newMenuItems = [
+            ...(initialState?.menuItems || []),
+            { path: `/chat/${newConversationId}`, name: `Chat ${newConversationId}` },
+          ];
+          setInitialState({ ...initialState, menuItems: newMenuItems });
+
+          message.success('会话创建成功');
+        })
+        .catch((error) => {
+          console.error('Error creating new conversation:', error);
+          message.error('会话创建失败');
+        });
     } else {
-      // 获取聊天记录
+      // 发起 fetch 请求获取历史聊天数据
       fetch(`http://127.0.0.1:3000/api/chat/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
@@ -107,10 +86,12 @@ const Chat: React.FC = () => {
       })
         .then((response) => response.json())
         .then((data) => {
+          console.log("前端收到的回答",data);
           const formattedHistory = data.messages.map((message, index) => ({
             text: message.text,
             key: index + 1,
             isReply: message.user === 'Chatbot',
+            ansid: message.id,
           }));
           setChatHistory(formattedHistory);
         })
@@ -158,6 +139,7 @@ const Chat: React.FC = () => {
               isReply: true,
             },
           ];
+
           setChatHistory(updatedChatHistory);
         })
         .catch((error) => {
@@ -165,6 +147,63 @@ const Chat: React.FC = () => {
         });
 
       setInputText('');
+    }
+  };
+
+  // 处理长按收藏
+  const handleMouseDown = (message: any) => {
+
+    console.log("选中的message",message);
+    if(message.isReply===true){
+      const timer = setTimeout(() => {
+        setIsLongPressed(true);
+        setSelectedMessage(message);
+      }, 500); // 设置长按时间为500ms
+      setPressTimer(timer);
+    }
+  };
+
+  const handleMouseUp = () => {
+    if (pressTimer) {
+      clearTimeout(pressTimer);
+      setPressTimer(null);
+    }
+  };
+
+  const handleCollect = () => {
+    if (selectedMessage) {
+      console.log("选中的消息",selectedMessage);
+      message.success('回答已收藏！回答编号:'+selectedMessage.ansid);
+      // 发送请求更新 is_collected 字段
+      fetch(`http://127.0.0.1:3000/api/messages/${selectedMessage.ansid}/collect`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${localStorage.getItem('token')}`, // 如果需要认证
+        },
+        body: JSON.stringify({ is_collected: 1 }), // 更新 is_collected 为 1
+      })
+        .then((response) => response.json())
+        .then((data) => {
+          console.log('更新成功', data);
+          message.success(`回答已收藏！回答编号: ${selectedMessage.ansid}`);
+        })
+        .catch((error) => {
+          console.error('更新失败', error);
+          message.error('收藏失败，请稍后重试');
+        });
+
+      setSelectedMessage(null);
+
+      // 设置收藏按钮延时消失
+      if (collectTimer) {
+        clearTimeout(collectTimer);
+      }
+      const timer = setTimeout(() => {
+        setIsLongPressed(false); // 2秒后消失按钮
+        setSelectedMessage(null); // 2秒后清除选中的消息
+      }, 2000); // 2秒后消失
+      setCollectTimer(timer);
     }
   };
 
@@ -208,6 +247,8 @@ const Chat: React.FC = () => {
                   alignSelf: chat.isReply ? 'flex-start' : 'flex-end',
                   marginBottom: '10px',
                 }}
+                onMouseDown={() => handleMouseDown(chat)}
+                onMouseUp={handleMouseUp}
               >
                 <Card
                   style={{
@@ -222,13 +263,30 @@ const Chat: React.FC = () => {
                 >
                   <Typography.Text
                     style={{
-                      whiteSpace: 'pre-wrap',
-                      wordBreak: 'break-word',
+                      whiteSpace: 'pre-wrap', // 允许文本换行
+                      wordBreak: 'break-word', // 允许单词内换行
                     }}
                   >
                     {chat.text}
                   </Typography.Text>
                 </Card>
+                {selectedMessage?.key === chat.key && isLongPressed && (
+                  <Popover
+                    content={
+                      <Button type="primary" onClick={handleCollect}>
+                        收藏此消息
+                      </Button>
+                    }
+                    trigger="click"
+                    visible={isLongPressed}
+                    onVisibleChange={(visible) => {
+                      if (!visible) setSelectedMessage(null);
+                    }}
+                    placement="top"
+                  >
+                    <div></div>
+                  </Popover>
+                )}
               </div>
             );
           })}

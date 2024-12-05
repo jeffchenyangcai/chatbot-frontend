@@ -623,7 +623,7 @@ exports[`Login Page should show login form 1`] = `
             >
               <img
                 alt="logo"
-                src="/logo.svg"
+                src="/ChatRuby.png"
               />
             </span>
             <span
@@ -1036,7 +1036,7 @@ exports[`Login Page should show login form 1`] = `
             href="https://pro.ant.design"
             rel="noreferrer"
             target="_blank"
-            title="Ant Design Pro"
+            title="ChatRuby"
           >
             Ant Design Pro
           </a>

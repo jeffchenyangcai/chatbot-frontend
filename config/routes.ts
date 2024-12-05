@@ -25,7 +25,6 @@ export default [
         path: '/user/register',
         component: './User/Register',
       },
-      
     ],
   },
   {
@@ -73,4 +72,8 @@ export default [
     component: './404',
   },
   { path: '/new-page', name: '新页面', component: './User/NewPage' },
+  {
+    path: '/collect', // 配置收藏页面路由
+    component: './Collect',
+  },
 ];

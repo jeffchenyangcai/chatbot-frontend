@@ -1,5 +1,5 @@
 import { Footer } from '@/components';
-import { register, login } from '@/services/ant-design-pro/api'; // 假设你有一个 register 和 login API
+import { login, register } from '@/services/ant-design-pro/api'; // 假设你有一个 register 和 login API
 import { getFakeCaptcha } from '@/services/ant-design-pro/login';
 import { LockOutlined, MobileOutlined, UserOutlined } from '@ant-design/icons';
 import {
@@ -178,7 +178,7 @@ const Register: React.FC = () => {
             minWidth: 280,
             maxWidth: '75vw',
           }}
-          logo={<img alt="logo" src="/logo.svg" />}
+          logo={<img alt="logo" src="/ChatRuby.png" />}
           title="Ant Design"
           subTitle={intl.formatMessage({ id: 'pages.layouts.userLayout.title' })}
           initialValues={{

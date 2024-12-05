@@ -1,5 +1,5 @@
 import { outLogin } from '@/services/ant-design-pro/api';
-import { LogoutOutlined, SettingOutlined, UserOutlined } from '@ant-design/icons';
+import {LikeOutlined, LogoutOutlined, SettingOutlined, UserOutlined} from '@ant-design/icons';
 import { history, useModel } from '@umijs/max';
 import { Spin } from 'antd';
 import { createStyles } from 'antd-style';
@@ -72,6 +72,11 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu, childre
         loginOut();
         return;
       }
+      if (key === 'collect') {
+        // 当点击 "收藏回答" 时跳转到收藏页面
+        history.push('/collect'); // 跳转到收藏页面
+        return;
+      }
       history.push(`/account/${key}`);
     },
     [setInitialState],
@@ -117,6 +122,11 @@ export const AvatarDropdown: React.FC<GlobalHeaderRightProps> = ({ menu, childre
           },
         ]
       : []),
+    {
+      key: 'collect',
+      icon: <LikeOutlined />,
+      label: '个人收藏',
+    },
     {
       key: 'logout',
       icon: <LogoutOutlined />,
