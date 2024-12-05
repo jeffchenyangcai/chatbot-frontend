@@ -215,6 +215,9 @@ const Login: React.FC = () => {
     try {
       await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
         method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
       });
       message.success('会话删除成功'); // 删除成功提示
       // 删除成功后，重新获取会话列表并更新菜单项
