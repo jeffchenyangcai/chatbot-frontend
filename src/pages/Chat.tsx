@@ -56,16 +56,25 @@ const Chat: React.FC = () => {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       })
-        .then((response) => response.json())
+        .then((response) => {
+          if (response.status === 403) {
+            // 如果返回 403 状态码，重定向到 403 页面
+            window.location.href = '/403';
+            return;
+          }
+          return response.json();
+        })
         .then((data) => {
-          console.log("前端收到的回答", data);
-          const formattedHistory = data.messages.map((message, index) => ({
-            text: message.text,
-            key: index + 1,
-            isReply: message.user === 'Chatbot',
-            ansid: message.id,
-          }));
-          setChatHistory(formattedHistory);
+          if (data) {
+            console.log("前端收到的回答", data);
+            const formattedHistory = data.messages.map((message, index) => ({
+              text: message.text,
+              key: index + 1,
+              isReply: message.user === 'Chatbot',
+              ansid: message.id,
+            }));
+            setChatHistory(formattedHistory);
+          }
         })
         .catch((error) => {
           console.error('Error fetching chat history:', error);
