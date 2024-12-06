@@ -6,7 +6,7 @@ import ReactMarkdown from 'react-markdown'; // 引入 react-markdown 库
 import remarkGfm from 'remark-gfm'; // 引入 remark-gfm 插件
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'; // 引入代码高亮库
 import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'; // 引入代码高亮样式
-import { CopyToClipboard } from 'react-copy-to-clipboard'; // 引入复制到剪贴板库
+import Clipboard from 'clipboard'; // 引入复制到剪贴板库
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
@@ -209,6 +209,23 @@ const Chat: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    const clipboard = new Clipboard('.copy-button');
+
+    clipboard.on('success', (e) => {
+      message.success('代码已复制到剪贴板');
+      e.clearSelection();
+    });
+
+    clipboard.on('error', (e) => {
+      message.error('复制失败，请稍后重试');
+    });
+
+    return () => {
+      clipboard.destroy();
+    };
+  }, []);
+
   return (
     <PageContainer>
       <Card
@@ -271,20 +288,19 @@ const Chat: React.FC = () => {
                               >
                                 {String(children).replace(/\n$/, '')}
                               </SyntaxHighlighter>
-                              <CopyToClipboard text={String(children)}>
-                                <Button
-                                  type="primary"
-                                  style={{
-                                    position: 'absolute',
-                                    top: '8px',
-                                    right: '8px',
-                                    zIndex: 1,
-                                  }}
-                                  onClick={() => message.success('代码已复制到剪贴板')}
-                                >
-                                  复制
-                                </Button>
-                              </CopyToClipboard>
+                              <Button
+                                type="primary"
+                                className="copy-button"
+                                data-clipboard-text={String(children).replace(/\n$/, '')}
+                                style={{
+                                  position: 'absolute',
+                                  top: '8px',
+                                  right: '8px',
+                                  zIndex: 1,
+                                }}
+                              >
+                                复制
+                              </Button>
                             </div>
                           ) : (
                             <code className={className} {...props}>
