@@ -8,6 +8,7 @@ import { history, Link } from '@umijs/max';
 import defaultSettings from '../config/defaultSettings';
 import { errorConfig } from './requestErrorConfig';
 import { message, Tooltip } from 'antd'; // 引入 message 和 Tooltip 组件
+import { Button } from 'antd';  // 确保引入 Button
 
 
 const isDev = process.env.NODE_ENV === 'development';
@@ -59,7 +60,7 @@ export async function getInitialState(): Promise<{
       {
         path: '/welcome',
         name: '欢迎',
-        icon: <SmileOutlined />, // 使用 SmileOutlined 图标
+        icon: <SmileOutlined />,
         component: './Welcome',
       },
       ...conversationIds.map((conversationId) => ({
@@ -69,7 +70,7 @@ export async function getInitialState(): Promise<{
           <Tooltip title="删除会话" placement="right">
             <DeleteOutlined onClick={() => handleDeleteConversation(conversationId)} />
           </Tooltip>
-        ), // 添加删除按钮
+        ),
       })),
     ];
 
@@ -77,7 +78,7 @@ export async function getInitialState(): Promise<{
     menuItems.push({
       path: '/chat/new',
       name: 'New Chat',
-      icon: <PlusOutlined />, // 使用加号图标
+      icon: <PlusOutlined onClick={handleAddConversation} />, // 使用加号图标并绑定添加会话的逻辑
     });
 
     console.log('Menu items generated:', menuItems);
@@ -95,54 +96,112 @@ export async function getInitialState(): Promise<{
   };
 }
 
+const handleAddConversation = async () => {
+  try {
+    const response = await fetch('http://127.0.0.1:3000/api/chat/new', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+    });
+    const data = await response.json();
+    message.success('会话创建成功');
+
+    // 获取更新后的会话列表
+    const newConversationIds = await fetchConversationIds();
+
+    // 更新菜单项
+    const newMenuItems = [
+      { path: '/welcome', name: '欢迎', icon: <SmileOutlined /> },
+      ...newConversationIds.map((id) => ({
+        path: `/chat/${id}`,
+        name: `Chat ${id}`,
+        icon: (
+          <Tooltip title="删除会话">
+            <DeleteOutlined onClick={() => handleDeleteConversation(id)} />
+          </Tooltip>
+        ),
+      })),
+      { path: '/chat/new', name: 'New Chat', icon: <PlusOutlined onClick={handleAddConversation} /> },
+    ];
+
+    // 更新 initialState
+    setInitialState((prevState) => ({
+      ...prevState,
+      conversationIds: newConversationIds,
+      menuItems: newMenuItems,
+    }));
+  } catch (error) {
+    console.error('Error adding conversation:', error);
+    message.error('会话创建失败');
+  }
+};
+
 const handleDeleteConversation = async (conversationId: number) => {
   try {
     await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
       method: 'DELETE',
-    });
-    message.success('会话删除成功'); // 删除成功提示
-    // 删除成功后，重新获取会话列表并更新菜单项
-    const newConversationIds = await fetchConversationIds();
-    const newMenuItems = [
-      {
-        path: '/welcome',
-        name: 'welcome',
-        icon: <SmileOutlined />, // 使用 SmileOutlined 图标
-        component: './Welcome',
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
-      ...newConversationIds.map((conversationId: number) => ({
-        path: `/chat/${conversationId}`,
-        name: `Chat ${conversationId}`,
+    }).catch((fetchError) => {
+      console.error('Error deleting conversation:', fetchError);
+      message.error('会话删除失败'); // 删除失败提示
+      return; // 提前返回，不执行后续代码
+    });
+
+    message.success('会话删除成功');
+
+    // 获取更新后的会话列表
+    const newConversationIds = await fetchConversationIds();
+
+    // 更新菜单项
+    const newMenuItems = [
+      { path: '/welcome', name: '欢迎', icon: <SmileOutlined /> },
+      ...newConversationIds.map((id) => ({
+        path: `/chat/${id}`,
+        name: `Chat ${id}`,
         icon: (
-          <Tooltip title="删除会话" placement="right">
-            <DeleteOutlined onClick={() => handleDeleteConversation(conversationId)} />
+          <Tooltip title="删除会话">
+            <DeleteOutlined onClick={() => handleDeleteConversation(id)} />
           </Tooltip>
-        ), // 添加删除按钮
+        ),
       })),
+      { path: '/chat/new', name: 'New Chat', icon: <PlusOutlined /> },
     ];
 
-    // 添加新增会话的菜单项
-    newMenuItems.push({
-      path: '/chat/new',
-      name: 'New Chat',
-      icon: <PlusOutlined />, // 使用加号图标
-    });
-
-    // 更新 initialState 中的 menuItems
-    setInitialState((preInitialState) => ({
-      ...preInitialState,
+    // 更新 initialState
+    setInitialState((prevState) => ({
+      ...prevState,
       conversationIds: newConversationIds,
       menuItems: newMenuItems,
     }));
   } catch (error) {
     console.error('Error deleting conversation:', error);
-    message.error('会话删除失败'); // 删除失败提示
+    message.error('会话删除失败');
   }
 };
 
+
 export const layout: RunTimeLayoutConfig = ({ initialState, setInitialState }) => {
   return {
-    actionsRender: () => [<Question key="doc" />, <SelectLang key="SelectLang" />],
+    actionsRender: () =>  [
+      <Button
+        type="primary"
+        style={{
+          width: '100px', // 设置按钮宽度
+          textAlign: 'center', // 文本居中
+          fontWeight: 'bold', // 文本加粗（可选）
+        }}
+        onClick={() => history.push('/new-page')} // 点击后跳转到新页面
+        key="new-page-button"
+      >
+        RAG
+      </Button>,
+      <Question key="doc" />,
+      <SelectLang key="SelectLang" />,
+    ],
     avatarProps: {
       src: initialState?.currentUser?.avatar,
       title: <AvatarName />,

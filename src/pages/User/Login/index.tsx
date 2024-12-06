@@ -2,9 +2,9 @@ import { Footer } from '@/components';
 import { login } from '@/services/ant-design-pro/api';
 import { getFakeCaptcha } from '@/services/ant-design-pro/login';
 import {
-  AlipayCircleOutlined,
+  AlipayCircleOutlined, DeleteOutlined,
   LockOutlined,
-  MobileOutlined,
+  MobileOutlined, PlusOutlined, SmileOutlined,
   TaobaoCircleOutlined,
   UserOutlined,
   WeiboCircleOutlined,
@@ -18,9 +18,9 @@ import {
 import { FormattedMessage, Helmet, history, SelectLang, useIntl, useModel } from '@umijs/max';
 import { Alert, message, Tabs } from 'antd';
 import { createStyles } from 'antd-style';
+import Settings from '../../../../config/defaultSettings';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
-import Settings from '../../../../config/defaultSettings';
 
 const useStyles = createStyles(({ token }) => {
   return {
@@ -129,20 +129,36 @@ const Login: React.FC = () => {
         localStorage.setItem('token', msg.data.token);
 
         // 立即获取用户信息并更新 initialState
-        const userInfo = await fetchUserInfo();
-        if (userInfo) {
-          flushSync(() => {
-            setInitialState((s) => ({
-              ...s,
-              currentUser: userInfo,
-            }));
-          });
+        try {
+          const userInfo = await fetchUserInfo();
+          if (userInfo) {
+            flushSync(() => {
+              setInitialState((s) => ({
+                ...s,
+                currentUser: userInfo,
+              }));
+            });
+          }
+        } catch (userInfoError) {
+          console.error('Failed to fetch user info:', userInfoError);
+          message.error('获取用户信息失败，请稍后重试！');
+          return; // 提前返回，避免继续执行后续操作
+        }
+
+        // 更新菜单栏
+        try {
+          await updateMenuItems();
+        } catch (menuItemsError) {
+          console.error('Failed to update menu items:', menuItemsError);
+          message.error('更新菜单栏失败，请稍后重试！');
+          return; // 提前返回，避免继续执行后续操作
         }
 
         const urlParams = new URL(window.location.href).searchParams;
         history.push(urlParams.get('redirect') || '/');
         return;
       }
+
       console.log(msg);
       // 如果失败去设置用户错误信息
       setUserLoginState(msg);
@@ -151,11 +167,127 @@ const Login: React.FC = () => {
         id: 'pages.login.failure',
         defaultMessage: '登录失败，请重试！',
       });
-      console.log(error);
+      console.error(error);
       message.error(defaultLoginFailureMessage);
     }
   };
   const { status, type: loginType } = userLoginState;
+
+  const fetchConversationIds = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:3000/api/conversations', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      const data = await response.json();
+      console.log('Conversation IDs fetched:', data.conversation_ids);
+      return data.conversation_ids;
+    } catch (error) {
+      console.error('Error fetching conversation IDs:', error);
+      return [];
+    }
+  };
+
+  const updateMenuItems = async () => {
+    console.log('Starting updateMenuItems...');
+
+    try {
+      // 获取会话 ID 列表
+      console.log('Fetching conversation IDs...');
+      const newConversationIds = await fetchConversationIds();
+      console.log('Fetched conversation IDs:', newConversationIds);
+
+      // 创建新的菜单项
+      console.log('Creating new menu items...');
+      const newMenuItems = [
+        {
+          path: '/welcome',
+          name: '欢迎',
+          icon: <SmileOutlined />,
+          component: './Welcome',
+        },
+        ...newConversationIds.map((conversationId) => ({
+          path: `/chat/${conversationId}`,
+          name: `Chat ${conversationId}`,
+          icon: (
+            <Tooltip title="删除会话" placement="right">
+              <DeleteOutlined onClick={() => handleDeleteConversation(conversationId)} />
+            </Tooltip>
+          ),
+        })),
+      ];
+
+      // 添加新增会话的菜单项
+      newMenuItems.push({
+        path: '/chat/new',
+        name: 'New Chat',
+        icon: <PlusOutlined />,
+      });
+
+      console.log('New menu items:', newMenuItems);
+
+      // 更新 initialState 中的 menuItems
+      console.log('Updating initialState...');
+      setInitialState((preInitialState) => ({
+        ...preInitialState,
+        conversationIds: newConversationIds,
+        menuItems: newMenuItems,
+      }));
+
+      console.log('InitialState updated successfully.');
+    } catch (error) {
+      console.error('Error in updateMenuItems:', error);
+    }
+  };
+
+  const handleDeleteConversation = async (conversationId: number) => {
+    try {
+      await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
+        method: 'DELETE',
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      message.success('会话删除成功'); // 删除成功提示
+      // 删除成功后，重新获取会话列表并更新菜单项
+      const newConversationIds = await fetchConversationIds();
+      const newMenuItems = [
+        {
+          path: '/welcome',
+          name: 'welcome',
+          icon: <SmileOutlined />, // 使用 SmileOutlined 图标
+          component: './Welcome',
+        },
+        ...newConversationIds.map((conversationId: number) => ({
+          path: `/chat/${conversationId}`,
+          name: `Chat ${conversationId}`,
+          icon: (
+            <Tooltip title="删除会话" placement="right">
+              <DeleteOutlined onClick={() => handleDeleteConversation(conversationId)} />
+            </Tooltip>
+          ), // 添加删除按钮
+        })),
+      ];
+
+      // 添加新增会话的菜单项
+      newMenuItems.push({
+        path: '/chat/new',
+        name: 'New Chat',
+        icon: <PlusOutlined />, // 使用加号图标
+      });
+
+      // 更新 initialState 中的 menuItems
+      setInitialState((preInitialState) => ({
+        ...preInitialState,
+        conversationIds: newConversationIds,
+        menuItems: newMenuItems,
+      }));
+    } catch (error) {
+      console.error('Error deleting conversation:', error);
+      message.error('会话删除失败'); // 删除失败提示
+    }
+  };
 
   return (
     <div className={styles.container}>
@@ -180,7 +312,7 @@ const Login: React.FC = () => {
             minWidth: 280,
             maxWidth: '75vw',
           }}
-          logo={<img alt="logo" src="/ChatRuby.png" />}
+          logo={<img alt="logo" src="/logo.svg" />}
           title="Ant Design"
           subTitle={intl.formatMessage({ id: 'pages.layouts.userLayout.title' })}
           initialValues={{
