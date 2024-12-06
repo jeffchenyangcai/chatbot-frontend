@@ -42,6 +42,7 @@ const fetchConversationIds = async () => {
 // Add a new conversation
 const handleAddConversation = async (setInitialState: any) => {
   try {
+    console.log("NEW app.tsx");
     const response = await fetch('http://127.0.0.1:3000/api/chat/new', {
       method: 'POST',
       headers: {
@@ -66,8 +67,9 @@ const handleAddConversation = async (setInitialState: any) => {
 };
 
 // Delete a conversation
-const handleDeleteConversation = async (conversationId: number, setInitialState: any) => {
+const handleDeleteConversation = async (conversationId: number) => {
   try {
+    console.log("DELETE app.tsx");
     await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
       method: 'DELETE',
       headers: {
@@ -76,13 +78,11 @@ const handleDeleteConversation = async (conversationId: number, setInitialState:
     });
     message.success('会话删除成功');
 
-    const newConversationIds = await fetchConversationIds();
-    const newMenuItems = generateMenuItems(newConversationIds, setInitialState);
-    setInitialState((prevState: any) => ({
-      ...prevState,
-      conversationIds: newConversationIds,
-      menuItems: newMenuItems,
-    }));
+    // 使用 history 对象重定向到 /welcome 页面
+    history.push('/welcome');
+    // 刷新页面
+    window.location.reload();
+
   } catch (error) {
     console.error('Error deleting conversation:', error);
     message.error('会话删除失败');

@@ -246,6 +246,7 @@ const Login: React.FC = () => {
 
   const handleDeleteConversation = async (conversationId: number) => {
     try {
+      console.log("DELETE app.tsx");
       await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
         method: 'DELETE',
         headers: {
