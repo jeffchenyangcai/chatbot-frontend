@@ -158,7 +158,8 @@ const Login: React.FC = () => {
         }
 
         const urlParams = new URL(window.location.href).searchParams;
-        history.push(urlParams.get('redirect') || '/');
+        // 重定向到 /welcome 页面
+        history.push('/welcome');
         return;
       }
 
