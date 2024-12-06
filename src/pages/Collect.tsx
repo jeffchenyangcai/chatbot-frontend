@@ -1,6 +1,9 @@
 import { Button, Card, List, Spin } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { message } from 'antd';  // 导入 antd 的 message 组件
+import ReactMarkdown from 'react-markdown';  // 导入 react-markdown 组件
+import remarkGfm from 'remark-gfm';  // 导入 remark-gfm 插件
+
 const Collect: React.FC = () => {
   const [collects, setCollects] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -34,7 +37,6 @@ const Collect: React.FC = () => {
         message.error('请求失败');
       });
   };
-
 
   useEffect(() => {
     console.log('开始读取collect');
@@ -74,7 +76,13 @@ const Collect: React.FC = () => {
           renderItem={(item) => (
             <List.Item>
               <Card title={`收藏：${item.collectId}`}>
-                <p>{item.content}</p>
+                {item.content.includes('```') ? (
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {item.content}
+                  </ReactMarkdown>
+                ) : (
+                  <p>{item.content}</p>
+                )}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div></div> {/* 占位符，用于将按钮推到右边 */}
                   <Button
