@@ -19,43 +19,9 @@ const Chat: React.FC = () => {
   const { id } = useParams(); // 获取 URL 中的动态参数 id
   const { initialState, setInitialState } = useModel('@@initialState'); // 获取 initialState 和 setInitialState
 
-  // 创建新会话
-  const createNewConversation = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:3000/api/chat/new', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await response.json();
-      return data.id; // 返回新会话 ID
-    } catch (error) {
-      console.error('Error creating new conversation:', error);
-      message.error('会话创建失败');
-    }
-  };
-
-  // 获取所有会话ID
-  const fetchConversationIds = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:3000/api/conversations', {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
-      const data = await response.json();
-      console.log('Conversation IDs fetched:', data.conversation_ids);
-      return data.conversation_ids;
-    } catch (error) {
-      console.error('Error fetching conversation IDs:', error);
-      return [];
-    }
-  };
-
   useEffect(() => {
     if (id === 'new') {
+      console.log("NEW Chat.tsx");
       fetch('http://127.0.0.1:3000/api/chat/new', {
         method: 'POST',
         headers: {
@@ -75,6 +41,9 @@ const Chat: React.FC = () => {
           setInitialState({ ...initialState, menuItems: newMenuItems });
 
           message.success('会话创建成功');
+
+          // 刷新页面
+          window.location.reload();
         })
         .catch((error) => {
           console.error('Error creating new conversation:', error);
