@@ -2,9 +2,12 @@ import { Footer } from '@/components';
 import { login } from '@/services/ant-design-pro/api';
 import { getFakeCaptcha } from '@/services/ant-design-pro/login';
 import {
-  AlipayCircleOutlined, DeleteOutlined,
+  AlipayCircleOutlined,
+  DeleteOutlined,
   LockOutlined,
-  MobileOutlined, PlusOutlined, SmileOutlined,
+  MobileOutlined,
+  PlusOutlined,
+  SmileOutlined,
   TaobaoCircleOutlined,
   UserOutlined,
   WeiboCircleOutlined,
@@ -16,11 +19,11 @@ import {
   ProFormText,
 } from '@ant-design/pro-components';
 import { FormattedMessage, Helmet, history, SelectLang, useIntl, useModel } from '@umijs/max';
-import { Alert, message, Tabs } from 'antd';
+import { Alert, message, Tabs, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
-import Settings from '../../../../config/defaultSettings';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
+import Settings from '../../../../config/defaultSettings';
 
 const useStyles = createStyles(({ token }) => {
   return {
