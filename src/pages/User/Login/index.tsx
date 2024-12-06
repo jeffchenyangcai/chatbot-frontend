@@ -2,9 +2,12 @@ import { Footer } from '@/components';
 import { login } from '@/services/ant-design-pro/api';
 import { getFakeCaptcha } from '@/services/ant-design-pro/login';
 import {
-  AlipayCircleOutlined, DeleteOutlined,
+  AlipayCircleOutlined,
+  DeleteOutlined,
   LockOutlined,
-  MobileOutlined, PlusOutlined, SmileOutlined,
+  MobileOutlined,
+  PlusOutlined,
+  SmileOutlined,
   TaobaoCircleOutlined,
   UserOutlined,
   WeiboCircleOutlined,
@@ -16,11 +19,11 @@ import {
   ProFormText,
 } from '@ant-design/pro-components';
 import { FormattedMessage, Helmet, history, SelectLang, useIntl, useModel } from '@umijs/max';
-import { Alert, message, Tabs } from 'antd';
+import { Alert, message, Tabs, Tooltip } from 'antd';
 import { createStyles } from 'antd-style';
-import Settings from '../../../../config/defaultSettings';
 import React, { useState } from 'react';
 import { flushSync } from 'react-dom';
+import Settings from '../../../../config/defaultSettings';
 
 const useStyles = createStyles(({ token }) => {
   return {
@@ -155,7 +158,8 @@ const Login: React.FC = () => {
         }
 
         const urlParams = new URL(window.location.href).searchParams;
-        history.push(urlParams.get('redirect') || '/');
+        // 重定向到 /welcome 页面
+        history.push('/welcome');
         return;
       }
 
@@ -243,6 +247,7 @@ const Login: React.FC = () => {
 
   const handleDeleteConversation = async (conversationId: number) => {
     try {
+      console.log("DELETE app.tsx");
       await fetch(`http://127.0.0.1:3000/api/chat/${conversationId}`, {
         method: 'DELETE',
         headers: {
