@@ -1,5 +1,5 @@
 import { PageContainer } from '@ant-design/pro-layout';
-import { Button, Card, Input, message, Popover, Space, theme, Typography } from 'antd';
+import { Button, Input, message, Popover, Space, theme, Typography } from 'antd';
 import React, { useEffect, useState } from 'react';
 import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
 import ReactMarkdown from 'react-markdown'; // 引入 react-markdown 库
@@ -228,27 +228,35 @@ const Chat: React.FC = () => {
 
   return (
     <PageContainer>
-      <Card
+      <div
         style={{
-          borderRadius: 8,
-          minHeight: '480px',
-        }}
-        bodyStyle={{
           display: 'flex',
           flexDirection: 'column',
-          justifyContent: 'space-between',
+          height: '100vh',
+          padding: '16px',
         }}
       >
         <div
           style={{
             flexGrow: 1,
-            overflowY: 'auto',
-            padding: '16px',
+            overflowY: 'hidden', // 关闭侧边上下滚动条
             display: 'flex',
             flexDirection: 'column',
-            maxHeight: '390px',
+            paddingBottom: '60px', // 为输入栏留出空间
           }}
         >
+          {/* 白色背景条 */}
+          <div
+            style={{
+              position: 'fixed',
+              bottom: '0px', // 发送框的高度
+              left: '257px',
+              right: '0px',
+              height: '90px', // 背景条的高度
+              backgroundColor: 'white', // 白色背景
+              zIndex: 2, // 确保背景条在发送框和 bubble 之间
+            }}
+          />
           {chatHistory.map((chat) => {
             return (
               <div
@@ -261,25 +269,24 @@ const Chat: React.FC = () => {
                 onMouseDown={() => handleMouseDown(chat)}
                 onMouseUp={handleMouseUp}
               >
-                <Card
+                <div
                   style={{
                     backgroundColor: chat.isReply ? 'rgba(0,0,0,0.06)' : '#95ec69',
-                    border: 'none',
-                    width: 'auto',
-                    height: 'auto',
-                  }}
-                  bodyStyle={{
+                    borderRadius: '8px',
                     padding: '10px',
+                    width: 'auto',
+                    maxWidth: '100%', // 设置最大宽度
+                    wordWrap: 'break-word', // 内容超过最大宽度时自动换行
                   }}
                 >
                   {chat.isReply ? (
                     <ReactMarkdown
                       remarkPlugins={[remarkGfm]}
                       components={{
-                        code({ node, inline, className, children, ...props }) {
+                        code({node, inline, className, children, ...props}) {
                           const match = /language-(\w+)/.exec(className || '');
                           return !inline && match ? (
-                            <div style={{ position: 'relative' }}>
+                            <div style={{position: 'relative'}}>
                               <SyntaxHighlighter
                                 style={dracula}
                                 language={match[1]}
@@ -322,7 +329,7 @@ const Chat: React.FC = () => {
                       {chat.text}
                     </Typography.Text>
                   )}
-                </Card>
+                </div>
                 {selectedMessage?.key === chat.key && isLongPressed && (
                   <Popover
                     content={
@@ -347,14 +354,25 @@ const Chat: React.FC = () => {
         <Space
           direction="vertical"
           size="middle"
+          // style={{
+          //   width: '100%',
+          //   position: 'fixed',
+          //   bottom: 0,
+          //   left: 0,
+          //   padding: '10px',
+          //   background: token.colorBgContainer,
+          //   borderTop: '1px solid #e8e8e8',
+          //   boxShadow: '0px -2px 10px rgba(0, 0, 0, 0.1)',
+          // }}
           style={{
-            width: '94%',
-            position: 'absolute',
-            bottom: 0,
+            width: '70%',
+            position: 'fixed',
+            bottom: '22px',
             marginBottom: '22px',
+            zIndex: 3, // 确保背景条在发送框和 bubble 之间
           }}
         >
-          <Space.Compact style={{ width: '100%' }}>
+          <Space.Compact style={{width: '100%'}}>
             <Input
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
@@ -365,7 +383,7 @@ const Chat: React.FC = () => {
             </Button>
           </Space.Compact>
         </Space>
-      </Card>
+      </div>
     </PageContainer>
   );
 };
