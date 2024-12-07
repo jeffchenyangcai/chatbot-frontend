@@ -3,6 +3,10 @@ import React, { useEffect, useState } from 'react';
 import { useParams, history, useModel } from '@umijs/max';
 import { PageContainer } from '@ant-design/pro-layout';
 import { StarOutlined, StarFilled, PaperClipOutlined } from '@ant-design/icons';
+import ReactMarkdown from 'react-markdown'; // 导入 react-markdown 组件
+import remarkGfm from 'remark-gfm'; // 导入 remark-gfm 插件
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'; // 导入代码高亮库
+import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'; // 导入 Dracula 主题
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
@@ -166,13 +170,28 @@ const Chat: React.FC = () => {
   };
 
   const handleCopyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(() => {
+          message.success('文本已复制到剪贴板');
+        })
+        .catch((error) => {
+          console.error('无法复制文本到剪贴板:', error);
+        });
+    } else {
+      // 如果 navigator.clipboard 不可用，使用备用方法
+      const textArea = document.createElement("textarea");
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      try {
+        document.execCommand('copy');
         message.success('文本已复制到剪贴板');
-      })
-      .catch(() => {
-        message.error('复制失败');
-      });
+      } catch (error) {
+        console.error('无法复制文本到剪贴板:', error);
+      }
+      document.body.removeChild(textArea);
+    }
   };
 
   // 监听回车键发送消息
@@ -182,8 +201,6 @@ const Chat: React.FC = () => {
       handleSend();
     }
   };
-
-
 
   return (
     <PageContainer>
@@ -197,22 +214,11 @@ const Chat: React.FC = () => {
         }}
       >
         <div
-          className="chat-page1"
-          style={{
-            fontSize: '20px',
-            color: token.colorTextHeading,
-            marginBottom: '16px',
-          }}
-        >
-          Title
-        </div>
-
-        <div
           className="chat-page2"
           style={{
             flexGrow: 1, // 让对话记录区域占据剩余空间
             overflowY: 'auto', // 使用页面滚动条处理滚动
-            padding: '16px', // 添加一些内边距
+            padding: '0px', // 添加一些内边距
             display: 'flex',
             flexDirection: 'column',
           }}
@@ -223,7 +229,7 @@ const Chat: React.FC = () => {
               key={chat.key}
               style={{
                 alignSelf: chat.isReply ? 'flex-start' : 'flex-end',
-                marginBottom: '20px',
+                marginBottom: '7px',
               }}
             >
               <Card
@@ -232,24 +238,52 @@ const Chat: React.FC = () => {
                   border: 'none',
                   width: 'auto',
                   height: 'auto',
-                  maxWidth: `${window.innerWidth * 0.5}px`, // 设置最大宽度为页面的一半
+                  maxWidth: `${window.innerWidth * 0.6}px`, // 设置最大宽度为页面的一半
                 }}
                 bodyStyle={{
-                  padding: '10px',
+                  padding: '8px',
+                  marginBottom: '4px',
                 }}
               >
-                <Typography.Text
-                  style={{
-                    whiteSpace: 'pre-wrap',
-                    wordBreak: 'break-word',
-                  }}
-                >
-                  {chat.text}
-                </Typography.Text>
+                {chat.text.includes('```') ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      code({ node, inline, className, children, ...props }) {
+                        const match = /language-(\w+)/.exec(className || '');
+                        return !inline && match ? (
+                          <SyntaxHighlighter
+                            style={dracula}
+                            language={match[1]}
+                            PreTag="div"
+                            {...props}
+                          >
+                            {String(children).replace(/\n$/, '')}
+                          </SyntaxHighlighter>
+                        ) : (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        );
+                      },
+                    }}
+                  >
+                    {chat.text}
+                  </ReactMarkdown>
+                ) : (
+                  <Typography.Text
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      wordBreak: 'break-word',
+                    }}
+                  >
+                    {chat.text}
+                  </Typography.Text>
+                )}
               </Card>
 
               {chat.isReply && (
-                <Space size="small" style={{ marginTop: '8px', gap: '1px' }}>
+                <Space size="small" style={{ marginTop: '0px', gap: '0px' }}>
                   <Button
                     type="link"
                     icon={chat.is_collected ? <StarFilled /> : <StarOutlined />}
