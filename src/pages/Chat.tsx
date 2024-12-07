@@ -1,27 +1,34 @@
-import { PageContainer } from '@ant-design/pro-layout';
-import { Button, Card, Input, message, Popover, Space, theme, Typography } from 'antd';
+import { Button, Card, Input, Space, theme, Typography, message } from 'antd';
 import React, { useEffect, useState } from 'react';
-import { useParams, history, useModel } from '@umijs/max'; // 引入 useParams、history 和 useModel 钩子
-import ReactMarkdown from 'react-markdown'; // 引入 react-markdown 库
-import remarkGfm from 'remark-gfm'; // 引入 remark-gfm 插件
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'; // 引入代码高亮库
-import { dracula } from 'react-syntax-highlighter/dist/esm/styles/prism'; // 引入代码高亮样式
-import Clipboard from 'clipboard'; // 引入复制到剪贴板库
+import { useParams, history, useModel } from '@umijs/max';
+import { PageContainer } from '@ant-design/pro-layout';
+import { StarOutlined, StarFilled, PaperClipOutlined } from '@ant-design/icons';
 
 const Chat: React.FC = () => {
   const { token } = theme.useToken();
   const [inputText, setInputText] = useState('');
-  const [chatHistory, setChatHistory] = useState<any[]>([]);
-  const [selectedMessage, setSelectedMessage] = useState<any | null>(null); // 选中的消息
-  const [pressTimer, setPressTimer] = useState<NodeJS.Timeout | null>(null); // 记录长按定时器
-  const [isLongPressed, setIsLongPressed] = useState(false); // 是否为长按
-  const [collectTimer, setCollectTimer] = useState<NodeJS.Timeout | null>(null); // 收藏按钮延时消失定时器
-  const { id } = useParams(); // 获取 URL 中的动态参数 id
-  const { initialState, setInitialState } = useModel('@@initialState'); // 获取 initialState 和 setInitialState
+  const [chatHistory, setChatHistory] = useState([]);
+  const { id } = useParams();
+  const { initialState, setInitialState } = useModel('@@initialState');
+
+  const fetchConversationIds = async () => {
+    try {
+      const response = await fetch('http://127.0.0.1:3000/api/conversations', {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      const data = await response.json();
+      console.log('Conversation IDs fetched:', data.conversation_ids);
+      return data.conversation_ids;
+    } catch (error) {
+      console.error('Error fetching conversation IDs:', error);
+      return [];
+    }
+  };
 
   useEffect(() => {
     if (id === 'new') {
-      console.log("NEW Chat.tsx");
       fetch('http://127.0.0.1:3000/api/chat/new', {
         method: 'POST',
         headers: {
@@ -29,8 +36,8 @@ const Chat: React.FC = () => {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       })
-        .then((response) => response.json())
-        .then((data) => {
+        .then(response => response.json())
+        .then(data => {
           const newConversationId = data.id;
           history.push(`/chat/${newConversationId}`);
 
@@ -41,42 +48,30 @@ const Chat: React.FC = () => {
           setInitialState({ ...initialState, menuItems: newMenuItems });
 
           message.success('会话创建成功');
-
-          // 刷新页面
-          window.location.reload();
         })
-        .catch((error) => {
+        .catch(error => {
           console.error('Error creating new conversation:', error);
           message.error('会话创建失败');
         });
     } else {
-      // 发起 fetch 请求获取历史聊天数据
       fetch(`http://127.0.0.1:3000/api/chat/${id}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem('token')}`,
         },
       })
-        .then((response) => {
-          if (response.status === 403) {
-            // 如果返回 403 状态码，重定向到 403 页面
-            window.location.href = '/403';
-            return;
-          }
-          return response.json();
+        .then(response => response.json())
+        .then(data => {
+          const formattedHistory = data.messages.map((message, index) => ({
+            text: message.text,
+            key: index + 1,
+            isReply: message.user === 'Chatbot',
+            is_collected: message.is_collected,
+            answerId: message.id,
+          }));
+
+          setChatHistory(formattedHistory);
         })
-        .then((data) => {
-          if (data) {
-            console.log("前端收到的回答", data);
-            const formattedHistory = data.messages.map((message, index) => ({
-              text: message.text,
-              key: index + 1,
-              isReply: message.user === 'Chatbot',
-              ansid: message.id,
-            }));
-            setChatHistory(formattedHistory);
-          }
-        })
-        .catch((error) => {
+        .catch(error => {
           console.error('Error fetching chat history:', error);
         });
     }
@@ -86,7 +81,7 @@ const Chat: React.FC = () => {
     if (inputText.trim()) {
       const newChatHistory = [
         ...chatHistory,
-        { text: inputText, key: chatHistory.length + 1, isReply: false },
+        { text: inputText, key: chatHistory.length + 1, isReply: false, is_collected: false },
       ];
 
       setChatHistory(newChatHistory);
@@ -109,8 +104,10 @@ const Chat: React.FC = () => {
           ],
         }),
       })
-        .then((response) => response.json())
-        .then((data) => {
+        .then(response => response.json())
+        .then(data => {
+          console.log('Message sent successfully:', data);
+
           const chatbotReply = data.messages[0];
           const updatedChatHistory = [
             ...newChatHistory,
@@ -118,12 +115,14 @@ const Chat: React.FC = () => {
               text: chatbotReply.text,
               key: newChatHistory.length + 1,
               isReply: true,
+              is_collected: false,
+              answerId: chatbotReply.id,
             },
           ];
 
           setChatHistory(updatedChatHistory);
         })
-        .catch((error) => {
+        .catch(error => {
           console.error('Error sending message:', error);
         });
 
@@ -131,219 +130,190 @@ const Chat: React.FC = () => {
     }
   };
 
-  // 处理长按收藏
-  const handleMouseDown = (message: any) => {
-    console.log("选中的message", message);
-    if (message.isReply === true) {
-      const timer = setTimeout(() => {
-        setIsLongPressed(true);
-        setSelectedMessage(message);
-      }, 500); // 设置长按时间为500ms
-      setPressTimer(timer);
-    }
-  };
+  const handleCollect = (selectedChat) => {
+    const updatedChatHistory = chatHistory.map(chat =>
+      chat.key === selectedChat.key
+        ? { ...chat, is_collected: selectedChat.is_collected === 1 ? 0 : 1 }
+        : chat
+    );
 
-  const handleMouseUp = () => {
-    if (pressTimer) {
-      clearTimeout(pressTimer);
-      setPressTimer(null);
-    }
-  };
+    console.log("selectedChat：", selectedChat);
+    console.log("chatHistory：", chatHistory);
 
-  const handleCollect = () => {
-    if (selectedMessage) {
-      console.log("选中的消息", selectedMessage);
-      message.success('回答已收藏！回答编号:' + selectedMessage.ansid);
-      // 发送请求更新 is_collected 字段
-      fetch(`http://127.0.0.1:3000/api/messages/${selectedMessage.ansid}/collect`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${localStorage.getItem('token')}`, // 如果需要认证
-        },
-        body: JSON.stringify({ is_collected: 1 }), // 更新 is_collected 为 1
+    setChatHistory(updatedChatHistory);
+
+    message.success(
+      `Message ${selectedChat.answerId} ${updatedChatHistory.find(chat => chat.key === selectedChat.key)?.is_collected === 1 ? 'added to' : 'removed from'} favorites.`
+    );
+
+    fetch(`http://127.0.0.1:3000/api/messages/${selectedChat.answerId}/collect`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
+      },
+      body: JSON.stringify({ is_collected: selectedChat.is_collected === 1 ? 0 : 1 }),
+    })
+      .then((response) => response.json())
+      .then((data) => {
+        console.log('更新成功', data);
+        message.success(`回答已${selectedChat.is_collected === 1 ? '取消' : ''}收藏！回答编号: ${selectedChat.answerId}`);
       })
-        .then((response) => response.json())
-        .then((data) => {
-          console.log('更新成功', data);
-          message.success(`回答已收藏！回答编号: ${selectedMessage.ansid}`);
-        })
-        .catch((error) => {
-          console.error('更新失败', error);
-          message.error('收藏失败，请稍后重试');
-        });
+      .catch((error) => {
+        console.error('更新失败', error);
+        message.error('收藏失败，请稍后重试');
+      });
+  };
 
-      setSelectedMessage(null);
+  const handleCopyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        message.success('文本已复制到剪贴板');
+      })
+      .catch(() => {
+        message.error('复制失败');
+      });
+  };
 
-      // 设置收藏按钮延时消失
-      if (collectTimer) {
-        clearTimeout(collectTimer);
-      }
-      const timer = setTimeout(() => {
-        setIsLongPressed(false); // 2秒后消失按钮
-        setSelectedMessage(null); // 2秒后清除选中的消息
-      }, 2000); // 2秒后消失
-      setCollectTimer(timer);
+  // 监听回车键发送消息
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();  // 防止换行
+      handleSend();
     }
   };
 
-  useEffect(() => {
-    const clipboard = new Clipboard('.copy-button');
 
-    clipboard.on('success', (e) => {
-      message.success('代码已复制到剪贴板');
-      e.clearSelection();
-    });
-
-    clipboard.on('error', (e) => {
-      message.error('复制失败，请稍后重试');
-    });
-
-    return () => {
-      clipboard.destroy();
-    };
-  }, []);
 
   return (
     <PageContainer>
       <Card
         style={{
           borderRadius: 8,
-          minHeight: '480px',
-        }}
-        bodyStyle={{
+          minHeight: '40vh',  // 确保整个页面填满
           display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'space-between',
+          flexDirection: 'column',  // 使用 flex 布局
+          paddingBottom: '80px',  // 给底部留出空间，避免输入框被遮挡
+        }}
+      >
+        <div
+          className="chat-page1"
+          style={{
+            fontSize: '20px',
+            color: token.colorTextHeading,
+            marginBottom: '16px',
+          }}
+        >
+          Title
+        </div>
+
+        <div
+          className="chat-page2"
+          style={{
+            flexGrow: 1, // 让对话记录区域占据剩余空间
+            overflowY: 'auto', // 使用页面滚动条处理滚动
+            padding: '16px', // 添加一些内边距
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          {chatHistory.map((chat) => (
+            <div
+              className="chat-bubble"
+              key={chat.key}
+              style={{
+                alignSelf: chat.isReply ? 'flex-start' : 'flex-end',
+                marginBottom: '20px',
+              }}
+            >
+              <Card
+                style={{
+                  backgroundColor: chat.isReply ? 'rgba(0,0,0,0.06)' : '#95ec69',
+                  border: 'none',
+                  width: 'auto',
+                  height: 'auto',
+                  maxWidth: `${window.innerWidth * 0.5}px`, // 设置最大宽度为页面的一半
+                }}
+                bodyStyle={{
+                  padding: '10px',
+                }}
+              >
+                <Typography.Text
+                  style={{
+                    whiteSpace: 'pre-wrap',
+                    wordBreak: 'break-word',
+                  }}
+                >
+                  {chat.text}
+                </Typography.Text>
+              </Card>
+
+              {chat.isReply && (
+                <Space size="small" style={{ marginTop: '8px', gap: '1px' }}>
+                  <Button
+                    type="link"
+                    icon={chat.is_collected ? <StarFilled /> : <StarOutlined />}
+                    onClick={() => handleCollect(chat)}
+                  />
+                  <Button
+                    type="link"
+                    icon={<PaperClipOutlined />}
+                    onClick={() => handleCopyToClipboard(chat.text)}
+                  />
+                </Space>
+              )}
+            </div>
+          ))}
+        </div>
+      </Card>
+      {/* 固定输入框 */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: 0,
+          left: 0,
+          right: 0,
+          background: '#fff',
+          padding: '16px',
+          zIndex: 10,
+          boxShadow: '0 -2px 10px rgba(0, 0, 0, 0.1)',
         }}
       >
         <div
           style={{
-            flexGrow: 1,
-            overflowY: 'auto',
-            padding: '16px',
             display: 'flex',
-            flexDirection: 'column',
-            maxHeight: '390px',
-          }}
-        >
-          {chatHistory.map((chat) => {
-            return (
-              <div
-                className="chat-bubble"
-                key={chat.key}
-                style={{
-                  alignSelf: chat.isReply ? 'flex-start' : 'flex-end',
-                  marginBottom: '10px',
-                }}
-                onMouseDown={() => handleMouseDown(chat)}
-                onMouseUp={handleMouseUp}
-              >
-                <Card
-                  style={{
-                    backgroundColor: chat.isReply ? 'rgba(0,0,0,0.06)' : '#95ec69',
-                    border: 'none',
-                    width: 'auto',
-                    height: 'auto',
-                  }}
-                  bodyStyle={{
-                    padding: '10px',
-                  }}
-                >
-                  {chat.isReply ? (
-                    <ReactMarkdown
-                      remarkPlugins={[remarkGfm]}
-                      components={{
-                        code({ node, inline, className, children, ...props }) {
-                          const match = /language-(\w+)/.exec(className || '');
-                          return !inline && match ? (
-                            <div style={{ position: 'relative' }}>
-                              <SyntaxHighlighter
-                                style={dracula}
-                                language={match[1]}
-                                PreTag="div"
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                              <Button
-                                type="primary"
-                                className="copy-button"
-                                data-clipboard-text={String(children).replace(/\n$/, '')}
-                                style={{
-                                  position: 'absolute',
-                                  top: '8px',
-                                  right: '8px',
-                                  zIndex: 1,
-                                }}
-                              >
-                                复制
-                              </Button>
-                            </div>
-                          ) : (
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          );
-                        },
-                      }}
-                    >
-                      {chat.text}
-                    </ReactMarkdown>
-                  ) : (
-                    <Typography.Text
-                      style={{
-                        whiteSpace: 'pre-wrap', // 允许文本换行
-                        wordBreak: 'break-word', // 允许单词内换行
-                      }}
-                    >
-                      {chat.text}
-                    </Typography.Text>
-                  )}
-                </Card>
-                {selectedMessage?.key === chat.key && isLongPressed && (
-                  <Popover
-                    content={
-                      <Button type="primary" onClick={handleCollect}>
-                        收藏此消息
-                      </Button>
-                    }
-                    trigger="click"
-                    visible={isLongPressed}
-                    onVisibleChange={(visible) => {
-                      if (!visible) setSelectedMessage(null);
-                    }}
-                    placement="top"
-                  >
-                    <div></div>
-                  </Popover>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <Space
-          direction="vertical"
-          size="middle"
-          style={{
-            width: '94%',
-            position: 'absolute',
-            bottom: 0,
-            marginBottom: '22px',
+            justifyContent: 'center',  // 水平居中
+            padding: '0 20px',  // 左右边距（可根据需要调整）
+            width: '100%',  // 父容器宽度占满
           }}
         >
           <Space.Compact style={{ width: '100%' }}>
             <Input
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              onPressEnter={handleSend}
+              placeholder="请输入问题..."
+              style={{
+                borderRadius: '16px',
+                flexGrow: 1,  // 根据需求调整输入框宽度
+                marginLeft: '208px', // 按钮和输入框之间的间距
+              }}
+              onKeyDown={handleKeyDown} // 监听回车键
             />
-            <Button type="primary" onClick={handleSend}>
+            <Button
+              type="primary"
+              onClick={handleSend}
+              style={{
+                borderRadius: '16px',
+                marginLeft: '18px', // 按钮和输入框之间的间距
+                marginRight: '68px', // 按钮和输入框之间的间距
+              }}
+            >
               发送
             </Button>
           </Space.Compact>
-        </Space>
-      </Card>
+        </div>
+
+      </div>
     </PageContainer>
   );
 };
